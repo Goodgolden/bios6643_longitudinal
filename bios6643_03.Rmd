@@ -1,0 +1,382 @@
+---
+title: "BIOS6643 longitudinal"
+author: "EJC"
+subtitle: L3 Linear Mixed Model
+institute: Department of Biostatistics & Informatics
+output:
+  beamer_presentation:
+    theme: Goettingen
+    colortheme: rose  
+    slide_level: 2
+    toc: true
+    keep_tex: true
+    latex_engine: xelatex
+    dev: cairo_pdf
+    fig_caption: no
+    fig_crop: no
+fontsize: 9pt
+make149: yes
+header-includes:
+- \AtBeginSubsection{}
+- \AtBeginSection{}
+---
+```{r setup, include=FALSE, cache=F, message=F, warning=F, results="hide"}
+knitr::opts_chunk$set(cache = TRUE, 
+                      echo = FALSE, 
+                      message = FALSE, 
+                      warning = FALSE)
+knitr::opts_chunk$set(fig.height = 4,
+                      fig.width = 5,
+                      out.width = '30%',
+                      fig.align='center')
+knitr::opts_chunk$set(fig.path = 'figs_L3/',
+                      cache.path = 'cache/')
+```
+
+
+# Linear Mixed Model 
+
+## Topics for these notes:
+
+-	Notation, model assumptions and comments
+
+-	LMM's versus GLM's
+
+-	Some simpler LMMs discussed in 6612
+
+-	Important distributions in the LMM
+
+-	General parameter estimation in the LMM; ML and REML
+
+**Associated reading:  The LMM course notes (early chapters)**
+
+ 
+## Notation, model assumptions and comments
+
+-	considering longitudinal data collected on subjects, there are 3 basic ways that linear mixed models can be expressed:  
+
+  - subject-time level
+  - subject level
+  - complete data level
+
+-	The mixed model at the subject-time level is useful when you have defined the particular experiment and variables.  For example, most of the models written in the notes up to this point are explicitly defined mixed models expressed at the subject-time level, with response $Y_{ij}$ ($i$ denoting subject, $j$ denoting time).
+
+
+##
+###	We can write a more general mixed model in terms of subject data: 
+
+$Y_i = X_i \beta + Z_ib_i + \epsilon_i$ for subjects $i = 1,\ ...\ ,\ n$.
+
+  $Y_i$ are the $r_i \times 1$ responses for subject $i$                  
+  
+  $X_i$ is the matrix of known covariates associated with fixed effects
+  
+  $\beta$ are the $p \times 1$ fixed effects
+  
+  $Z_i$ is the matrix of known covariates associated with the random effects
+  
+  $\epsilon_i$ is the residual error vector.
+
+-	We index $X$ and $Z$ by subject even when they may be the same across subjects, in order to identify the size of the matrices. - We will keep $X$ and $Z$ without indices to denote the full-data versions of these matrices, which will be defined shortly.
+
+
+##
+-	For the model above, we assume $b_i \sim \mathcal N(\pmb0,\ \pmb G_i)$ and $\epsilon_i \sim \mathcal N(\pmb 0, \pmb R_i)$, and that these random vectors are independent.
+
+-	In addition, subjects themselves are assumed to be independent of each other.  However, in cases where subjects are not independent, we can work this into the model by defining appropriate cluster units, which will be discussed later.  
+
+-	Generally speaking,  $\pmb G_i$ will be used to account for variability between subjects and $\pmb R_i$ will be used to account for covariances between repeated measures within subjects.  However, it will also be demonstrated that there are many ways to model correlated data that combine  $\pmb G_i$ and  $R_i$.
+
+
+##
+-	The subject models can be combined into one 'complete-data' model by essentially stacking the $n$ subject-specific models:
+
+$$
+\begin{bmatrix}
+Y_{1 (r_1 \times 1)}\\Y_{2 (r_2 \times 1)}\\ \vdots\\ Y_{n (r_n \times 1)}
+\end{bmatrix} =
+\begin{bmatrix}
+X_{1 (r_1 \times p)}\\X_{2(r_2 \times p)}\\ \vdots\\ X_{n(r_n \times p)}
+\end{bmatrix}
+\times \pmb \beta_{(p \times 1)} +
+\begin{bmatrix}
+Z_{1 (r_1 \times q)}\ 0\ \dots\ 0\\ 0\ Z_{2 (r_2 \times q)}\ \dots\ 0\\ \vdots\ \ddots\ \ddots\ \vdots\\ 0\ 0\ \dots\ Z_{n (r_n \times q)}
+\end{bmatrix}
+\begin{bmatrix}
+b_{1 (q \times 1)}\\b_{2 (q \times 1)}\\ \vdots\\ b_{n (q \times 1)}
+\end{bmatrix} +
+\begin{bmatrix}
+\epsilon_{1 (r_1 \times 1)}\\ \epsilon_{2 (r_2 \times 1)}\\ \vdots\\ \epsilon_{n (r_n \times 1)}
+\end{bmatrix}
+$$
+
+or more succinctly $Y_{r_{tot} \times 1} = X_{r_{tot} \times p} \beta_{p \times 1} + Z_{r_{tot}\times q_{tot}} \times b_{q_{tot} \times 1} + \epsilon_{r_{tot} \times 1}$,	
+where  
+
+
+$$
+\begin{pmatrix} \pmb b_{(q_{tot} \times 1)} \\ \pmb \epsilon_{(r_{tot} \times 1)}
+\end{pmatrix}
+\sim \mathcal N 
+\begin{pmatrix}
+\begin{pmatrix}
+\pmb 0_{(q_{tot} \times 1)}\\ \pmb 0_{(r_{tot} \times 1)}
+\end{pmatrix} ,
+\begin{pmatrix}
+\pmb G_{(q_{tot} \times q_{tot}})\ \ \ \pmb 0_{(q_{tot} \times r_{tot})}\\ \pmb 0_{(r_{tot} \times q_{tot})}\ \ \ \pmb R_{(r_{tot} \times r_{tot})}
+\end{pmatrix}
+\end{pmatrix}
+$$
+
+
+
+$q_{tot} = nq$  and  $r_{tot} = \sum r_i$,
+$\pmb G_{(q_{tot} \times q_{tot})} = diag_{i=1}^n \pmb G_{i (q \times q)}$ and 
+$\pmb R_{(r_{tot} \times r_{tot})} = diag_{i=1}^n \pmb R_{i (r_i \times r_i)}$
+
+
+## 
+-	Note that $\pmb R_i$will often differ between subjects due to different numbers of repeated measures (although the underlying parameters are usually the same).  
+
+-	Even when $\pmb R_i$or  $\pmb G_i$ are the same across subjects (this is usually the case for  $\pmb G_i$), we keep the subscript $i$ since $\pmb R$ and $\pmb G$ are used for complete data form.  [When $\pmb R_i$ does differ between subjects due to missing data, we will later discuss how we can keep dimensions of $\pmb R_i$the same across subjects and just partition the matrix into 'observed' and 'missing' pieces.]
+
+-	When  $\pmb G_i$ is the same across subjects, note that  $\pmb G_{(q_{tot} \times q_{tot})} = \pmb I_{(n\times n)} \otimes \pmb G_{i(q \times q)}$, where $\otimes$ denotes the **Kronecker product**.  Generally, for an $m \times n$ matrix $\pmb A$ and $p \ times q$ matrix $\pmb B$, the Kronecker product is defined as:
+
+
+$$
+\pmb  A \otimes \pmb B = 
+\begin{pmatrix}
+a_{11} \pmb B\ \ \ a_{12} \pmb B\  \ \ \dots\ a_{1n} \pmb B\\ a_{21} \pmb B\ \ \ a_{22} \pmb B\ \ \ \dots\ a_{2n} \pmb B\\ \vdots\ \ \ \ \ \ \vdots\ \ \ \ \ \ \ddots\ \ \ \ \  \vdots\\ a_{m1} \pmb B\ \ \  a_{m2} \pmb B\ \ \  \dots\ \ a_{mn} \pmb B\\ \end{pmatrix}
+$$
+
+
+##   
+-	The normal distribution assumption of the random effects is common.  There have been methodological developments to account for non-normal random effects by considering mixtures of normals (which can yield quite a variety of distributions).
+
+-	In fitting a linear mixed model with SAS, PROC MIXED, the RANDOM statement is used to specify $\pmb Z$ and $\pmb G$, while the REPEATED statement is used to specify $\pmb R$.  When a REPEATED statement is not included, the model will use $\pmb R_i = \pmb I_{r_i}\sigma_\epsilon^2$ (the independent structure).
+
+-	In modeling a random intercept term by subject, we discussed how the following approaches were essentially equivalent (however, see course notes for differences in computation between these approaches):                 
+    -\alert {random} intercept / subject=id;                       
+    -\alert {random} id;                
+
+-	You can add the option '$g$' after the slash in the RANDOM statement to get the form and fit for what SAS calls '$\pmb G$'.
+
+
+##
+
+-	The notation for mixed models varies from text to text.  We will use $\pmb \beta$ to denote the set of regression coefficients.  We can denote the set of all covariance parameters in the covariance matrix of $\pmb Y_i$, $(Var[\pmb Y_i]= \pmb V_i)$ as $\pmb \alpha$.  Collectively, $\pmb \theta=(\pmb \alpha,\ \pmb \beta)$ is the set of all parameters in a particular mixed model.  The variance function $\pmb V_i$ is often written as $\pmb V_i[\pmb \alpha]$ to indicate that all parameters in the matrix involve $\pmb \alpha$.
+
+-	We will typically use $\pmb b_i$ for random effects.  When we have only a random intercept, we might call it $b_i$.  If there is a random intercept and slope, we can use $\pmb b_i = (\pmb b_{0i},\ \pmb b_{1i})$ (the 1st element for intercept, the 2nd for slope).
+
+-	We use $\pmb R_i$ for the 'within-subject' covariance matrix and  $\pmb G_i$ for the covariance matrix of random effects that expresses 'between-subject' variability.  But note that both of these matrices impact $Var[\pmb Y_i]$, which is the covariance matrix for the responses (you could also call it $Cov[\pmb Y_i]$).
+
+## A simple way to account for correlation in an LMM is to add a 'random intercept':
+
+-	The basic model is $Y_{ij} = \beta_0 + \beta_1 x_{1ij} +\ ...\ + \beta_{p-1} x_{p-1, ij} + b_i + e_{ij} = \pmb X_{ij} \pmb \beta + b_i +\epsilon_ij$ where $\pmb Y$ is the outcome, $\pmb X_{ij} = (x_{1ij},\ ...\ ,\ x_{p–1,ij})$ is a row vector of predictors, both for subject $i$ at time $j$, and where $\epsilon_{ij} \sim \mathcal N (0,\ \sigma_\epsilon^2)$ and $b_{i} \sim \mathcal N (0,\ \sigma_b^2)$ .  These random terms are assumed to be independent of each other.
+
+-	The main element that distinguishes this from a general linear model is the addition of the random term $b_i$.  We also use subject and time indices here, with the addition of the repeated measures.
+
+-	What is $Var[\pmb Y_i]$?
+
+## A special case of the LMM:  a GLM!
+
+-	A linear mixed model with no random effects and a simple error covariance structure $(\pmb R=σ^2 \pmb I)$ is a general linear model.
+
+-	For cross-sectional data without correlation, we can fit using SAS PROC GLM or the lm function in R.  But using LMM software will also work!  (Like PROC MIXED.)
+
+-	For GLM $\pmb Y= \pmb X \pmb \beta + \pmb \epsilon$, the least squares estimator of $\pmb \beta$ is $\pmb {(X^{\top}X)^{-1}X^{\top}Y}$.  To show, apply calculus to matrix quantities (see lecture notes).  This is also the MLE of $\pmb \beta$.  The MLE of $\sigma^2$ is biased!
+
+-	Examples of GLM data
+
+  - Myostatin data
+  - Mouse and smoke data
+  
+  
+## LMM's versus GLM's
+
+-	For many simpler models, GLM and LMM modeling approaches will be the same (since GLM's are special cases of LMM's).
+
+-	Treatment of predictors in LMMs and GLMs are generally the same.  writing ESTIMATE and CONTRAST statements are similar for GLMs and LMMs.
+
+-	Inference in the GLM versus LMM
+
+  - Both commonly us ML (or REML) to estimate parameters; Wald ($t$) and LRT ($F$) tests are used for testing hypotheses.
+  
+  - In the GLM, F-tests come via the ANOVA table (algebraic).
+  
+  - In the LMM, we identify quantities that have approximate $t$ or $F$ distributions, then calibrate the test by estimating the appropriate degrees of freedom.
+  
+##
+
+-	There are several (D)DF estimation methods:  containment, between-within, residual, Satterthwaite, Kenward-Roger.  Depending on the model, some methods may produce the same (D)DF.  One of the key issues is accurately estimating the true distribution of the test statistic under the null hypothesis.  
+
+-	In SAS, there are default (D)DF estimation approaches depending on whether you have a RANDOM or REPEATED statement (or both).  You can specify the method you want, or even just numerically specify the DF.  Recall that both $t$ and $F$ distributions are indexed by (D)DF.
+
+-	For more details, see Verbeke and Molenberghs, Linear Mixed Models in Practice, Springer, 1997, Appendix A, and also the SAS Help Documentation.
+
+## Some simpler LMMs discussed in 6612
+
+-	Simple random intercept models (fixed effects plus one random intercept for subjects)
+    
+  - 1-sample
+  - Multi-sample
+
+-	For the simple random intercept model, tests for predictors can also be conducted via the GLM, using 'repeated measures ANOVA'.
+
+-	Model with crossed random effects
+    
+  - Side question:  when to make an effect fixed or random?
+  - Judge data
+
+-	Please review the course notes.
+
+
+## Important distributions in the LMM
+
+-	The conditional distribution of $\pmb Y$  given the random effects $\pmb b$
+
+$$
+\pmb{Y|b} \sim\mathcal N (\pmb {X\beta} + \pmb {Zb},\ \pmb R) 
+= \mathcal N\Big((\pmb X\ \pmb Z) 
+\begin{pmatrix}
+\pmb \beta\\ \pmb b
+\end{pmatrix},\ \pmb R
+\Big)
+$$
+
+-	The classical method to analyze longitudinal data, “RM ANOVA”, essentially makes inference using this conditional distribution, since the random effects are treated as fixed effects.  Adjustments are then made to tests in order to make 'correct' inference for estimators that account for the clustered data.  In some cases this approach may yield the same or similar results as fitting a linear mixed model, but generally is much more limited.
+
+-	The conditional distribution is used to conduct inference for random effects using standard LMM methods (i.e., the 'Laird and Ware' approach).
+
+##
+
+-	The marginal distribution of $\pmb Y$ 
+  
+  - The joint distribution of $\pmb Y$ and $\pmb b$ is 	
+
+
+$$
+\begin{pmatrix}
+\pmb Y\\ \pmb b
+\end{pmatrix} \sim \mathcal N
+\begin{pmatrix}
+\begin{pmatrix}
+\pmb {X\beta} +\pmb {Zb}\\ \pmb 0
+\end{pmatrix},
+\begin{pmatrix}
+\pmb ZGZ^{\top} +\pmb R\ \ \pmb ZG\\ \pmb G^{\top}Z^{\top}\ \ \ \ \  \pmb G
+\end{pmatrix}
+\end{pmatrix}
+$$
+
+  - The marginal distribution of $\pmb Y$ can be obtained by integrating out the random effects $\pmb b$ from the joint distribution to obtain $\pmb Y \sim \mathcal N (\pmb {X\beta},\ \pmb V = \pmb {ZGZ}^{\top} + \pmb R)$.
+  
+  - The marginal distribution is used in the likelihood functions that are used to estimate parameters in the LMM.
+
+##
+
+-	Modern mixed model methodology maximizes the likelihood associated with $\pmb Y$, or it equivalently minimizes
+
+$$
+l = -2ln(L) = r_{tot}ln(2\pi) + ln |\pmb V| + 
+\pmb {(y-X\beta)}^{\top}\pmb V^{-1} \pmb {(y-X\beta)}
+$$
+
+
+in order to make inferences about the regression coefficients $\pmb \beta$ and covariance parameters $\pmb \alpha$.
+
+-	The likelihood is also often expressed as a combination of subject-specific components:
+
+$$
+L(\theta)=\prod_{i=1}^n{(2\pi)^{-r_i/2} |\pmb {V_i (\alpha)} |^{-1/2} exp \big(-(\pmb Y_i - \pmb {X_i \beta} )^{\top} \pmb V_i^{-1} (\pmb Y_i - \pmb {X\beta})/2 \big)}
+$$
+
+$$
+\rightarrow l =-2ln(L)=\sum_{i=1}^n r_i ln(2π) + \sum_{i=1}^n ln|\pmb {V_i (α)}| + \sum_{i=1}^n (\pmb {Y_i-X\beta})^{\top} \pmb V_i^{-1} (\pmb \alpha)(\pmb {Y_i-X\beta}) 
+$$
+
+
+## General parameter estimation in the mixed model
+
+-	For the standard GLM, there are the regression coefficients $\pmb \beta$ and one covariance parameter $(\sigma^2)$ to estimate, which can be carried out using matrix algebra.
+
+-	Due to the inclusion of more covariance parameters in the model (in either $\pmb G$ or $\pmb R$), parameter estimation in the mixed model is not as straightforward and generally requires at least some numerical analysis.
+
+-	Before describing these techniques in more detail, we will first discuss the most common estimation approaches, maximum likelihood (ML) estimation and restricted maximum likelihood (REML) estimation.  There is also the MIVQUE0 estimation approach, which is seldom used.
+
+ 
+## Maximum Likelihood (ML) Estimation
+
+-	The ML estimators of $\pmb \beta$ are obtained by Maximizing the likelihood $L$ or minimizing $l$ (both  given on previous page) based on the marginal distribution of $\pmb Y$.  This can be accomplished by first noting that Maximizing the likelihood with respect to $\pmb \beta$, conditional on $\pmb \alpha$, yields:          
+$\pmb {\hat \beta(\alpha) = \big( \sum_{i=1}^nX_i^{\top}V_i^{-1}(\alpha)X_i \big)^{-}\sum_{i=1}^nX_i^{\top}V_i^{-1}(\alpha)Y_i}$	(subject-specific form)                            
+$\pmb {\hat \beta(\alpha) = (X^{\top}V^{-1}X)^{-}X^{\top}V^{-1}Y}$	(complete-data form) 		(1)          
+where $\pmb V_i = Var[\pmb Y_i] = \pmb {Z_iG_iZ_i^{\top} + R_i}$ (subject-specific form).                  
+
+-	Notice that we need values of $\alpha$ in order to solve (1).  To accomplish this, we can replace $\beta$ in the likelihood function with its MLE in (1).  Now we have a likelihood expressed in terms of $\alpha$ only.  Such a likelihood is sometimes referred to as a profile likelihood.
+
+
+## 
+
+-	Now we can maximize the profile likelihood function in order to obtain   using a numerical technique such as a  ridge-stabilized Newton-Raphson algorithm (common in SAS).  We can then go back and determine   using (1) by replacing $\pmb \alpha$ with its ML estimates.
+
+-	The MLE solution we obtain with this approach is the same as what we would obtain if we were able to maximize the likelihood simultaneously with respect to $\pmb \alpha$ and $\pmb \beta$.  Notice that the estimator of $\pmb \beta$ in (1) is identical to the weighted least-squares estimates with $\pmb V^{-1}$ as the weighting matrix.
+
+-	One drawback of ML estimation is that associated estimators of covariance parameters tend to be biased.  REML offers one way to remove or reduce bias.  
+
+-	Note that (1) uses a generalized inverse in case $\pmb X$ does not have full rank.  If $\pmb X$ does have full rank, then we can replace $(\pmb {X^{\top}V^{-1}X})^-$ with $(\pmb {X^{\top}V^{-1}X})^{-1}$.  Issues of model parameterization and estimation here are analogous to those discussed in the GLM review.
+
+## Restricted maximum likelihood (REML) estimation
+
+-	To first introduce REML estimation, consider estimating the population variance based on a random sample from the population of interest.
+
+-	We know the sample variance ($s^2$, which uses $n–1$ in the denominator) is unbiased for the population variance in the case that the population mean is unknown and estimated (i.e., the usual case).
+
+-	But the ML estimator of $\sigma^2$  has $n$ in the denominator.  This demonstrates that ML estimates may not necessarily be unbiased estimators.  REML estimation offers an alternative to ML estimation which helps to circumvent this problem.  **Note:  some call $s^2$ the adjusted MLE estimator.**
+
+
+## REML estimation for variance
+
+-	Let $ \pmb J_n = \pmb J_{n \times 1}$ , $\pmb I_n = \pmb I_{n \times n}$ , and let $\pmb Y=(Y_1,\ Y_2,\ ...\ ,\ Y_n )^{\top}$ , where  $\pmb Y \sim \mathcal N(\mu \pmb J_n,\ \sigma^2 \pmb I_n )$
+
+-	Let $\pmb A$ = any matrix with $n–1$ independent columns orthogonal to $\pmb J_n$.  E.g.:
+
+$$
+A = 
+\begin{pmatrix}
+1\ 0\ \dots\ 0\\ -1\ 1\ \dots\ \dots\\ 0\ -1\ \dots\ \dots\\ \dots\ 0\ \dots\ 0\\ \dots\ \dots\ \dots\ 1\\ 0\ 0\ \dots\ -1
+\end{pmatrix}
+$$
+
+-	Let  $\pmb U= \pmb A^{\top} \pmb Y$ be error contrasts.  Note that $\pmb U \sim \mathcal N(0,\ \sigma^2 \pmb {A^{\top} A})$  and that  $\sigma^2$ is the only parameter in the distribution for $\pmb U$.  Maximizing the likelihood for $\pmb U$ with respect to $\sigma^2$ yields: $\hat \sigma^2 = \frac {\pmb {Y^{\top} A(A^{\top} A)^{-1} A^{\top} Y}} {n-1}=s^2$.
+
+-	In a similar fashion, it can be shown that the REML estimator of  $\sigma^2$ in a GLM is $\frac {\pmb {Y^{\top} (I – P_X)Y}} {n -k}$ .  Can you do this?
+
+
+## REML estimation in the linear mixed model
+
+-	Let $\pmb A$ be a full rank matrix with columns orthogonal to the columns of $\pmb X$.  Then $\pmb U= \pmb {A^{\top} Y} \sim \mathcal N(\pmb 0, \pmb{A^{\top} V(\alpha)A})$, which does not depend on $\beta$.  The associated likelihood is
+
+$$
+L=(2\pi)^{-(r_{tot}-k)/2} \Big|\sum_{i=1}^n \pmb X_i^{\top} \pmb X_i \Big|^ {1/2} \Big|\sum_{i=1}^n \pmb X_i^{\top} \pmb V_i^{-1} \pmb X_i \Big|^{-1/2} \prod_{i=1}^n |\pmb V_i |^{-1/2} exp \Big(-\frac 1 2 \sum_{i=1}^n (\pmb Y_i-\pmb X_i \pmb{\hat \beta})^{\top} 
+\pmb V_i^{-1} (\pmb Y_i - \pmb X_i \pmb {\hat\beta})\Big)
+$$
+
+where $k=rank(X)$.
+
+-	Note that this restricted $L$ does not involve $\pmb \beta$ parameters ($\hat \beta$ is a function of $\pmb \alpha$, as are $\pmb V_i$ matrices) and is not a profile likelihood, as before.  This is why some software (e.g., SAS) does not penalize for $\beta$ terms in the AIC.
+
+-	The restricted likelihood can be maximized to yield $\alpha$.  The problem is that this method really only offers a way to estimate parameters in $\alpha$, not $\pmb \beta$.
+
+
+## 
+
+-	The common approach to estimate $\pmb \beta$ is then to plug the REML estimators of $\pmb \alpha$ back into equation (1).  But equation (1) was derived using ML methods, so this estimation of $\pmb \beta$ is really based on a hybrid of ML and REML methods.  Specifically, estimators of $\beta$ use the ML form, but employ REML estimators of the variance components in that form.
+
+-	Verbeke denotes these as “REML” estimators of $\pmb \beta$ (quotes emphasized).  Since estimation of $\pmb \beta$ is not based on one clear method, some statisticians prefer ML estimation.  On the other hand, this estimation method does offer a way to reduce bias in variance component estimators.  Some might argue that this is more important than the methodological issue.
+
+### Choosing the estimation method in SAS
+
+-	In the PROC MIXED statement, an option can be added:  method = ML <or> REML <or> MIVQUE0 (no slash to separate the method option from the rest of the statement) if ML estimates are of interest.  Note that the default method is REML; if no option is specified, then REML will be used.
+
+Properties of estimators in the LMM:  BLUE, BLUP, EBLUE, EBLUP
+
