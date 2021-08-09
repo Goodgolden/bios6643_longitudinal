@@ -5,6 +5,7 @@ subtitle: L3 Linear Mixed Model
 institute: Department of Biostatistics & Informatics
 output:
   beamer_presentation:
+    template: template_00.tex
     theme: Goettingen
     colortheme: rose  
     slide_level: 2
@@ -39,13 +40,9 @@ knitr::opts_chunk$set(fig.path = 'figs_L3/',
 ## Topics for these notes:
 
 -	Notation, model assumptions and comments
-
 -	LMM's versus GLM's
-
 -	Some simpler LMMs discussed in 6612
-
 -	Important distributions in the LMM
-
 -	General parameter estimation in the LMM; ML and REML
 
 **Associated reading:  The LMM course notes (early chapters)**
@@ -146,7 +143,11 @@ $\pmb R_{(r_{tot} \times r_{tot})} = diag_{i=1}^n \pmb R_{i (r_i \times r_i)}$
 $$
 \pmb  A \otimes \pmb B = 
 \begin{pmatrix}
-a_{11} \pmb B\ \ \ a_{12} \pmb B\  \ \ \dots\ a_{1n} \pmb B\\ a_{21} \pmb B\ \ \ a_{22} \pmb B\ \ \ \dots\ a_{2n} \pmb B\\ \vdots\ \ \ \ \ \ \vdots\ \ \ \ \ \ \ddots\ \ \ \ \  \vdots\\ a_{m1} \pmb B\ \ \  a_{m2} \pmb B\ \ \  \dots\ \ a_{mn} \pmb B\\ \end{pmatrix}
+a_{11} \pmb B & a_{12} \pmb B & \dots & a_{1n} \pmb B\\ 
+a_{21} \pmb B & a_{22} \pmb B & \dots & a_{2n} \pmb B\\ 
+\vdots & \vdots & \ddots & \vdots\\ 
+a_{m1} \pmb B & a_{m2} \pmb B & \dots & a_{mn} \pmb B
+\end{pmatrix}
 $$
 
 
@@ -180,7 +181,7 @@ $$
 
 ## A special case of the LMM:  a GLM!
 
--	A linear mixed model with no random effects and a simple error covariance structure $(\pmb R=σ^2 \pmb I)$ is a general linear model.
+-	A linear mixed model with no random effects and a simple error covariance structure $(\pmb R=\sigma ^2 \pmb I)$ is a general linear model.
 
 -	For cross-sectional data without correlation, we can fit using SAS PROC GLM or the lm function in R.  But using LMM software will also work!  (Like PROC MIXED.)
 
@@ -217,14 +218,12 @@ $$
 ## Some simpler LMMs discussed in 6612
 
 -	Simple random intercept models (fixed effects plus one random intercept for subjects)
-    
   - 1-sample
   - Multi-sample
 
 -	For the simple random intercept model, tests for predictors can also be conducted via the GLM, using 'repeated measures ANOVA'.
 
 -	Model with crossed random effects
-    
   - Side question:  when to make an effect fixed or random?
   - Judge data
 
@@ -277,23 +276,14 @@ $$
 
 -	Modern mixed model methodology maximizes the likelihood associated with $\pmb Y$, or it equivalently minimizes
 
-$$
-l = -2ln(L) = r_{tot}ln(2\pi) + ln |\pmb V| + 
-\pmb {(y-X\beta)}^{\top}\pmb V^{-1} \pmb {(y-X\beta)}
-$$
+$l = -2ln(L) = r_{tot}ln(2\pi) + ln |\pmb V| + \pmb {(y-X\beta)}^{\top}\pmb V^{-1} \pmb {(y-X\beta)}$
 
 
 in order to make inferences about the regression coefficients $\pmb \beta$ and covariance parameters $\pmb \alpha$.
 
--	The likelihood is also often expressed as a combination of subject-specific components:
+-	The likelihood is also often expressed as a combination of subject-specific components: $L(\theta)=\prod_{i=1}^n{(2\pi)^{-r_i/2} |\pmb {V_i (\alpha)} |^{-1/2} exp \big(-(\pmb Y_i - \pmb {X_i \beta} )^{\top} \pmb V_i^{-1} (\pmb Y_i - \pmb {X\beta})/2 \big)}$
 
-$$
-L(\theta)=\prod_{i=1}^n{(2\pi)^{-r_i/2} |\pmb {V_i (\alpha)} |^{-1/2} exp \big(-(\pmb Y_i - \pmb {X_i \beta} )^{\top} \pmb V_i^{-1} (\pmb Y_i - \pmb {X\beta})/2 \big)}
-$$
-
-$$
-\rightarrow l =-2ln(L)=\sum_{i=1}^n r_i ln(2π) + \sum_{i=1}^n ln|\pmb {V_i (α)}| + \sum_{i=1}^n (\pmb {Y_i-X\beta})^{\top} \pmb V_i^{-1} (\pmb \alpha)(\pmb {Y_i-X\beta}) 
-$$
+$\rightarrow l =-2ln(L)=\sum_{i=1}^n r_i ln(2\pi) + \sum_{i=1}^n ln|\pmb {V_i (\alpha)}| + \sum_{i=1}^n (\pmb {Y_i-X\beta})^{\top} \pmb V_i^{-1} (\pmb \alpha)(\pmb {Y_i-X\beta})$
 
 
 ## General parameter estimation in the mixed model
@@ -317,7 +307,7 @@ where $\pmb V_i = Var[\pmb Y_i] = \pmb {Z_iG_iZ_i^{\top} + R_i}$ (subject-specif
 
 ## 
 
--	Now we can maximize the profile likelihood function in order to obtain   using a numerical technique such as a  ridge-stabilized Newton-Raphson algorithm (common in SAS).  We can then go back and determine   using (1) by replacing $\pmb \alpha$ with its ML estimates.
+-	Now we can maximize the profile likelihood function in order to obtain   using a numerical technique such as a  ridge-stabilized Newton-Raphson algorithm (common in SAS).  We can then go back and determine using (1) by replacing $\pmb \alpha$ with its ML estimates.
 
 -	The MLE solution we obtain with this approach is the same as what we would obtain if we were able to maximize the likelihood simultaneously with respect to $\pmb \alpha$ and $\pmb \beta$.  Notice that the estimator of $\pmb \beta$ in (1) is identical to the weighted least-squares estimates with $\pmb V^{-1}$ as the weighting matrix.
 
@@ -336,32 +326,35 @@ where $\pmb V_i = Var[\pmb Y_i] = \pmb {Z_iG_iZ_i^{\top} + R_i}$ (subject-specif
 
 ## REML estimation for variance
 
--	Let $ \pmb J_n = \pmb J_{n \times 1}$ , $\pmb I_n = \pmb I_{n \times n}$ , and let $\pmb Y=(Y_1,\ Y_2,\ ...\ ,\ Y_n )^{\top}$ , where  $\pmb Y \sim \mathcal N(\mu \pmb J_n,\ \sigma^2 \pmb I_n )$
+-	Let $\pmb J_n = \pmb J_{n \times 1}$ , $\pmb I_n = \pmb I_{n \times n}$ , and let $\pmb Y=(Y_1,\ Y_2,\ ...\ ,\ Y_n )^{\top}$ , where  $\pmb Y \sim \mathcal N(\mu \pmb J_n,\ \sigma^2 \pmb I_n )$
 
 -	Let $\pmb A$ = any matrix with $n–1$ independent columns orthogonal to $\pmb J_n$.  E.g.:
+
+
+
 
 $$
 A = 
 \begin{pmatrix}
-1\ 0\ \dots\ 0\\ -1\ 1\ \dots\ \dots\\ 0\ -1\ \dots\ \dots\\ \dots\ 0\ \dots\ 0\\ \dots\ \dots\ \dots\ 1\\ 0\ 0\ \dots\ -1
+1\ & 0\ & \dots\ & 0\\ -1\ & 1\ & \dots\ & \dots\\ 0\ & -1\ & \dots\ & \dots\\ \dots\ & 0\ & \dots\ & 0\\ \dots\  & \dots\ & \dots\ & 1\\ 0\ & 0\ & \dots\ &  -1
 \end{pmatrix}
 $$
 
 -	Let  $\pmb U= \pmb A^{\top} \pmb Y$ be error contrasts.  Note that $\pmb U \sim \mathcal N(0,\ \sigma^2 \pmb {A^{\top} A})$  and that  $\sigma^2$ is the only parameter in the distribution for $\pmb U$.  Maximizing the likelihood for $\pmb U$ with respect to $\sigma^2$ yields: $\hat \sigma^2 = \frac {\pmb {Y^{\top} A(A^{\top} A)^{-1} A^{\top} Y}} {n-1}=s^2$.
 
--	In a similar fashion, it can be shown that the REML estimator of  $\sigma^2$ in a GLM is $\frac {\pmb {Y^{\top} (I – P_X)Y}} {n -k}$ .  Can you do this?
+-	In a similar fashion, it can be shown that the REML estimator of  $\sigma^2$ in a GLM is $\frac {\pmb {Y^{\top} (I - P_X)Y}} {n -k}$ .  Can you do this?
 
 
 ## REML estimation in the linear mixed model
 
 -	Let $\pmb A$ be a full rank matrix with columns orthogonal to the columns of $\pmb X$.  Then $\pmb U= \pmb {A^{\top} Y} \sim \mathcal N(\pmb 0, \pmb{A^{\top} V(\alpha)A})$, which does not depend on $\beta$.  The associated likelihood is
 
-$$
-L=(2\pi)^{-(r_{tot}-k)/2} \Big|\sum_{i=1}^n \pmb X_i^{\top} \pmb X_i \Big|^ {1/2} \Big|\sum_{i=1}^n \pmb X_i^{\top} \pmb V_i^{-1} \pmb X_i \Big|^{-1/2} \prod_{i=1}^n |\pmb V_i |^{-1/2} exp \Big(-\frac 1 2 \sum_{i=1}^n (\pmb Y_i-\pmb X_i \pmb{\hat \beta})^{\top} 
-\pmb V_i^{-1} (\pmb Y_i - \pmb X_i \pmb {\hat\beta})\Big)
-$$
+\tiny
+$L=(2\pi)^{-(r_{tot}-k)/2} \Big|\sum_{i=1}^n \pmb X_i^{\top} \pmb X_i \Big|^ {1/2} \Big|\sum_{i=1}^n \pmb X_i^{\top} \pmb V_i^{-1} \pmb X_i \Big|^{-1/2} \prod_{i=1}^n |\pmb V_i |^{-1/2} exp \Big(-\frac 1 2 \sum_{i=1}^n (\pmb Y_i-\pmb X_i \pmb{\hat \beta})^{\top} \pmb V_i^{-1} (\pmb Y_i - \pmb X_i \pmb {\hat\beta})\Big)$
 
-where $k=rank(X)$.
+\normalsize
+, where $k=rank(X)$.
+
 
 -	Note that this restricted $L$ does not involve $\pmb \beta$ parameters ($\hat \beta$ is a function of $\pmb \alpha$, as are $\pmb V_i$ matrices) and is not a profile likelihood, as before.  This is why some software (e.g., SAS) does not penalize for $\beta$ terms in the AIC.
 
@@ -379,4 +372,3 @@ where $k=rank(X)$.
 -	In the PROC MIXED statement, an option can be added:  method = ML <or> REML <or> MIVQUE0 (no slash to separate the method option from the rest of the statement) if ML estimates are of interest.  Note that the default method is REML; if no option is specified, then REML will be used.
 
 Properties of estimators in the LMM:  BLUE, BLUP, EBLUE, EBLUP
-

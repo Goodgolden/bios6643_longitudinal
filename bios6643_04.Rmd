@@ -5,6 +5,7 @@ subtitle: "L4 LMM Foundation II:  Random intercept model and RM ANOVA"
 institute: Department of Biostatistics & Informatics
 output:
   beamer_presentation:
+    template: template_00.tex
     theme: Goettingen
     colortheme: rose  
     slide_level: 2

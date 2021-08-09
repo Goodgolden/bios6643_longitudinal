@@ -7,10 +7,25 @@
   ignorenonframetext,
 ]{beamer}
 \usepackage{pgfpages}
+% set the section number 
+\setbeamertemplate{section in toc}[sections numbered]
+\setbeamertemplate{subsection in toc}[subsections numbered]
+\setbeamertemplate{navigation symbols}{}
+% set the page
+\setbeamertemplate{footline}[page number]
 \setbeamertemplate{caption}[numbered]
 \setbeamertemplate{caption label separator}{: }
 \setbeamercolor{caption name}{fg=normal text.fg}
 \beamertemplatenavigationsymbolsempty
+
+%%
+%%% Definition of colors
+%%% Source: https://latexcolor.com/
+\definecolor{blanchedalmond}{rgb}{1.0, 0.92, 0.8}
+\definecolor{blond}{rgb}{0.98, 0.94, 0.75}
+%%% End of definition of colors
+%%
+
 % Prevent slide breaks in the middle of a paragraph
 \widowpenalties 1 10000
 \raggedbottom
@@ -45,13 +60,12 @@
   \frame{\subsectionpage}
 }
 \usepackage{lmodern}
-\usepackage{amsmath}
+\usepackage{amssymb,amsmath}
 \usepackage{ifxetex,ifluatex}
 \ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
   \usepackage[T1]{fontenc}
   \usepackage[utf8]{inputenc}
   \usepackage{textcomp} % provide euro and other symbols
-  \usepackage{amssymb}
 \else % if luatex or xetex
   \usepackage{unicode-math}
   \defaultfontfeatures{Scale=MatchLowercase}
@@ -74,6 +88,48 @@
     \setlength{\parskip}{6pt plus 2pt minus 1pt}}
 }{% if KOMA class
   \KOMAoptions{parskip=half}}
+  
+% adjust for sidebar
+  \setbeamertemplate{sidebar \beamer@sidebarside}
+  {
+    \beamer@tempdim=\beamer@sidebarwidth%
+    \advance\beamer@tempdim by -6pt%
+    \vskip4em%
+    \insertverticalnavigation{\beamer@sidebarwidth}%
+    \vfill
+    \ifx\beamer@sidebarside\beamer@lefttext%
+    \else%
+      \usebeamercolor{normal text}%
+      \llap{\usebeamertemplate***{navigation symbols}\hskip0.1cm}%
+      \vskip2pt%
+    \fi%
+  }%
+
+  \ifx\beamer@sidebarside\beamer@lefttext%
+    \defbeamertemplate*{sidebar right}{sidebar theme}
+    {%
+      \vfill%
+      \llap{\usebeamertemplate***{navigation symbols}\hskip0.1cm}%
+      \vskip2pt}
+  \fi
+
+\setbeamertemplate{section in sidebar}%{sidebar theme}
+{%
+  \vbox{%
+    \vskip1ex%
+    \beamer@sidebarformat{3pt}{section in sidebar}{\insertsectionheadnumber
+~\insertsectionhead}%
+  }%
+}
+\setbeamertemplate{section in sidebar shaded}%{sidebar theme}
+{%
+  \vbox{%
+    \vskip1ex%
+    \beamer@sidebarformat{3pt}{section in sidebar shaded}{\insertsectionheadnumber
+~\insertsectionhead}%
+  }%
+}  
+
 \makeatother
 \usepackage{xcolor}
 \IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
@@ -89,11 +145,54 @@
 \providecommand{\tightlist}{%
   \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 \setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+
+%
+% When using babel or polyglossia with biblatex, loading csquotes is recommended 
+% to ensure that quoted texts are typeset according to the rules of your main language.
+%
+\usepackage{csquotes}
+
+%
+% blockquote
+%
+\definecolor{blockquote-border}{RGB}{221,221,221}
+\definecolor{blockquote-text}{RGB}{89,89,89}
+\usepackage{mdframed}
+\newmdenv[rightline=false,bottomline=false,topline=false,linewidth=3pt,linecolor=blockquote-border,skipabove=\parskip]{customblockquote}
+\renewenvironment{quote}{\begin{customblockquote}\list{}{\rightmargin=0em\leftmargin=0em}%
+\item\relax\color{blockquote-text}\ignorespaces}{\unskip\unskip\endlist\end{customblockquote}}
+
+%
+% Source Sans Pro as the de­fault font fam­ily
+% Source Code Pro for monospace text
+%
+% 'default' option sets the default 
+% font family to Source Sans Pro, not \sfdefault.
+%
+\usepackage[default]{sourcesanspro}
+\usepackage{sourcecodepro}
+
+% XeLaTeX specific adjustments for straight quotes: https://tex.stackexchange.com/a/354887
+% This issue is already fixed (see https://github.com/silkeh/latex-sourcecodepro/pull/5) but the 
+% fix is still unreleased.
+% TODO: Remove this workaround when the new version of sourcecodepro is reelased on CTAN.
+\ifxetex
+\makeatletter
+\defaultfontfeatures[\ttfamily]
+  { Numbers   = \sourcecodepro@figurestyle,
+    Scale     = \SourceCodePro@scale,
+    Extension = .otf }
+\setmonofont
+  [ UprightFont    = *-\sourcecodepro@regstyle,
+    ItalicFont     = *-\sourcecodepro@regstyle It,
+    BoldFont       = *-\sourcecodepro@boldstyle,
+    BoldItalicFont = *-\sourcecodepro@boldstyle It ]
+  {SourceCodePro}
+\makeatother
+\fi
+
 \AtBeginSubsection{}
 \AtBeginSection{}
-\ifluatex
-  \usepackage{selnolig}  % disable illegal ligatures
-\fi
 
 \title{BIOS6643 longitudinal}
 \subtitle{L3 Linear Mixed Model}
@@ -104,8 +203,11 @@
 \begin{document}
 \frame{\titlepage}
 
-\begin{frame}[allowframebreaks]
-  \tableofcontents[hideallsubsections]
+\begin{frame}
+  \begin{columns}
+  \column{10cm}
+  \tableofcontents
+  \end{columns}
 \end{frame}
 \hypertarget{linear-mixed-model}{%
 \section{Linear Mixed Model}\label{linear-mixed-model}}
@@ -113,6 +215,7 @@
 \begin{frame}{Topics for these notes:}
 \protect\hypertarget{topics-for-these-notes}{}
 \begin{itemize}
+\tightlist
 \item
   Notation, model assumptions and comments
 \item
@@ -279,7 +382,11 @@ and
 \[
 \pmb  A \otimes \pmb B = 
 \begin{pmatrix}
-a_{11} \pmb B\ \ \ a_{12} \pmb B\  \ \ \dots\ a_{1n} \pmb B\\ a_{21} \pmb B\ \ \ a_{22} \pmb B\ \ \ \dots\ a_{2n} \pmb B\\ \vdots\ \ \ \ \ \ \vdots\ \ \ \ \ \ \ddots\ \ \ \ \  \vdots\\ a_{m1} \pmb B\ \ \  a_{m2} \pmb B\ \ \  \dots\ \ a_{mn} \pmb B\\ \end{pmatrix}
+a_{11} \pmb B & a_{12} \pmb B & \dots & a_{1n} \pmb B\\ 
+a_{21} \pmb B & a_{22} \pmb B & \dots & a_{2n} \pmb B\\ 
+\vdots & \vdots & \ddots & \vdots\\ 
+a_{m1} \pmb B & a_{m2} \pmb B & \dots & a_{mn} \pmb B
+\end{pmatrix}
 \]
 \end{frame}
 
@@ -364,7 +471,7 @@ add a `random intercept':}
 \begin{itemize}
 \item
   A linear mixed model with no random effects and a simple error
-  covariance structure \((\pmb R=σ^2 \pmb I)\) is a general linear
+  covariance structure \((\pmb R=\sigma ^2 \pmb I)\) is a general linear
   model.
 \item
   For cross-sectional data without correlation, we can fit using SAS
@@ -532,10 +639,7 @@ add a `random intercept':}
   with \(\pmb Y\), or it equivalently minimizes
 \end{itemize}
 
-\[
-l = -2ln(L) = r_{tot}ln(2\pi) + ln |\pmb V| + 
-\pmb {(y-X\beta)}^{\top}\pmb V^{-1} \pmb {(y-X\beta)}
-\]
+\(l = -2ln(L) = r_{tot}ln(2\pi) + ln |\pmb V| + \pmb {(y-X\beta)}^{\top}\pmb V^{-1} \pmb {(y-X\beta)}\)
 
 in order to make inferences about the regression coefficients
 \(\pmb \beta\) and covariance parameters \(\pmb \alpha\).
@@ -545,15 +649,10 @@ in order to make inferences about the regression coefficients
 \item
   The likelihood is also often expressed as a combination of
   subject-specific components:
+  \(L(\theta)=\prod_{i=1}^n{(2\pi)^{-r_i/2} |\pmb {V_i (\alpha)} |^{-1/2} exp \big(-(\pmb Y_i - \pmb {X_i \beta} )^{\top} \pmb V_i^{-1} (\pmb Y_i - \pmb {X\beta})/2 \big)}\)
 \end{itemize}
 
-\[
-L(\theta)=\prod_{i=1}^n{(2\pi)^{-r_i/2} |\pmb {V_i (\alpha)} |^{-1/2} exp \big(-(\pmb Y_i - \pmb {X_i \beta} )^{\top} \pmb V_i^{-1} (\pmb Y_i - \pmb {X\beta})/2 \big)}
-\]
-
-\[
-\rightarrow l =-2ln(L)=\sum_{i=1}^n r_i ln(2π) + \sum_{i=1}^n ln|\pmb {V_i (α)}| + \sum_{i=1}^n (\pmb {Y_i-X\beta})^{\top} \pmb V_i^{-1} (\pmb \alpha)(\pmb {Y_i-X\beta}) 
-\]
+\(\rightarrow l =-2ln(L)=\sum_{i=1}^n r_i ln(2\pi) + \sum_{i=1}^n ln|\pmb {V_i (\alpha)}| + \sum_{i=1}^n (\pmb {Y_i-X\beta})^{\top} \pmb V_i^{-1} (\pmb \alpha)(\pmb {Y_i-X\beta})\)
 \end{frame}
 
 \begin{frame}{General parameter estimation in the mixed model}
@@ -650,7 +749,7 @@ L(\theta)=\prod_{i=1}^n{(2\pi)^{-r_i/2} |\pmb {V_i (\alpha)} |^{-1/2} exp \big(-
 \protect\hypertarget{reml-estimation-for-variance}{}
 \begin{itemize}
 \item
-  Let \$ \pmb J\_n = \pmb J\_\{n \times 1\}\$ ,
+  Let \(\pmb J_n = \pmb J_{n \times 1}\) ,
   \(\pmb I_n = \pmb I_{n \times n}\) , and let
   \(\pmb Y=(Y_1,\ Y_2,\ ...\ ,\ Y_n )^{\top}\) , where
   \(\pmb Y \sim \mathcal N(\mu \pmb J_n,\ \sigma^2 \pmb I_n )\)
@@ -662,7 +761,7 @@ L(\theta)=\prod_{i=1}^n{(2\pi)^{-r_i/2} |\pmb {V_i (\alpha)} |^{-1/2} exp \big(-
 \[
 A = 
 \begin{pmatrix}
-1\ 0\ \dots\ 0\\ -1\ 1\ \dots\ \dots\\ 0\ -1\ \dots\ \dots\\ \dots\ 0\ \dots\ 0\\ \dots\ \dots\ \dots\ 1\\ 0\ 0\ \dots\ -1
+1\ & 0\ & \dots\ & 0\\ -1\ & 1\ & \dots\ & \dots\\ 0\ & -1\ & \dots\ & \dots\\ \dots\ & 0\ & \dots\ & 0\\ \dots\  & \dots\ & \dots\ & 1\\ 0\ & 0\ & \dots\ &  -1
 \end{pmatrix}
 \]
 
@@ -676,7 +775,7 @@ A =
   \(\hat \sigma^2 = \frac {\pmb {Y^{\top} A(A^{\top} A)^{-1} A^{\top} Y}} {n-1}=s^2\).
 \item
   In a similar fashion, it can be shown that the REML estimator of
-  \(\sigma^2\) in a GLM is \(\frac {\pmb {Y^{\top} (I – P_X)Y}} {n -k}\)
+  \(\sigma^2\) in a GLM is \(\frac {\pmb {Y^{\top} (I - P_X)Y}} {n -k}\)
   . Can you do this?
 \end{itemize}
 \end{frame}
@@ -692,12 +791,13 @@ A =
   which does not depend on \(\beta\). The associated likelihood is
 \end{itemize}
 
-\[
-L=(2\pi)^{-(r_{tot}-k)/2} \Big|\sum_{i=1}^n \pmb X_i^{\top} \pmb X_i \Big|^ {1/2} \Big|\sum_{i=1}^n \pmb X_i^{\top} \pmb V_i^{-1} \pmb X_i \Big|^{-1/2} \prod_{i=1}^n |\pmb V_i |^{-1/2} exp \Big(-\frac 1 2 \sum_{i=1}^n (\pmb Y_i-\pmb X_i \pmb{\hat \beta})^{\top} 
-\pmb V_i^{-1} (\pmb Y_i - \pmb X_i \pmb {\hat\beta})\Big)
-\]
+\tiny
 
-where \(k=rank(X)\).
+\(L=(2\pi)^{-(r_{tot}-k)/2} \Big|\sum_{i=1}^n \pmb X_i^{\top} \pmb X_i \Big|^ {1/2} \Big|\sum_{i=1}^n \pmb X_i^{\top} \pmb V_i^{-1} \pmb X_i \Big|^{-1/2} \prod_{i=1}^n |\pmb V_i |^{-1/2} exp \Big(-\frac 1 2 \sum_{i=1}^n (\pmb Y_i-\pmb X_i \pmb{\hat \beta})^{\top} \pmb V_i^{-1} (\pmb Y_i - \pmb X_i \pmb {\hat\beta})\Big)\)
+
+\normalsize
+
+, where \(k=rank(X)\).
 
 \begin{itemize}
 \item

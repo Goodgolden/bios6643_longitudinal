@@ -5,6 +5,7 @@ subtitle: "L5 Contrast"
 institute: Department of Biostatistics & Informatics
 output:
   beamer_presentation:
+    template: template_00.tex
     theme: Goettingen
     colortheme: rose  
     slide_level: 2
