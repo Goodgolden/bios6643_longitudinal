@@ -102,16 +102,25 @@ Although analytic methods for time series and longitudinal data differ, they do 
 For the simulated data, $\mu=0$ and $\epsilon_t \sim \mathcal {N} (0,\ 0.46)$ for all $t$.
 
 ```{r "stationary", fig.align='center', fig.height=3.2}
-set.seed(6643)
+set.seed(20216643)
 mu <- 0
 t <- 1:100
 beta0 <- 0
 beta1 <- -0.05
 e0 <- rnorm(100, mean = 0, sd = 0.46)
-e1 <- arima.sim(list(order = c(1,0,0), ar = .25), n = 100)
-e2 <- arima.sim(list(order = c(1,0,0), ar = .50), n = 100)
-e3 <- arima.sim(list(order = c(1,0,0), ar = .75), n = 100)
-e4 <- arima.sim(list(order = c(1,0,0), ar = .99), n = 100)
+## use the arima.sim() function -----------------------------
+# e1 <- arima.sim(list(order = c(1, 0, 0), ar = .25), n = 100)
+# e2 <- arima.sim(list(order = c(1, 0, 0), ar = .50), n = 100)
+# e3 <- arima.sim(list(order = c(1, 0, 0), ar = .75), n = 100)
+# e4 <- arima.sim(list(order = c(1, 0, 0), ar = .99), n = 100)
+## use the definition ----------------------------------------
+e1 <- e2 <- e3 <- e4 <- array(rnorm(1, mean = 0, sd = 0.46))
+for (i in seq_along(1:99)) {
+  e1[i + 1] <- 0.25 * e1[i] + rnorm(1, mean = 0, sd = 0.46)
+  e2[i + 1] <- 0.5 * e2[i] + rnorm(1, mean = 0, sd = 0.46)
+  e3[i + 1] <- 0.75 * e3[i] + rnorm(1, mean = 0, sd = 0.46)
+  e4[i + 1] <- 0.99 * e4[i] + rnorm(1, mean = 0, sd = 0.46)
+}
 Y1 <- mu + e1
 Y2 <- mu + e2
 Y3 <- mu + e3
@@ -152,7 +161,7 @@ ar25 <- ggplot(dat, aes(t, Y1)) +
 ar50 <- ggplot(dat, aes(t, Y2)) +
   geom_line() +
   theme_classic() +
-  ggtitle(expression(paste(phi, " = 0.2")))
+  ggtitle(expression(paste(phi, " = 0.50")))
 
 ar75 <- ggplot(dat, aes(t, Y3)) +
   geom_line() +

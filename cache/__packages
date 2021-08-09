@@ -9,3 +9,6 @@ dplyr
 stringr
 forcats
 here
+pheatmap
+RColorBrewer
+viridisLite

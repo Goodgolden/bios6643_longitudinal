@@ -77,39 +77,42 @@ library(here)
 
 *Data*:  The Ramus data come from a prospective study that has existed for over 40 years and was used by dentists to establish a growth curve for the ramus (part of the lower jaw bone) for young boys.  Four measurements were made on 20 boys, at ages 8 (h1), 8.5 (h2), 9 (h3) and 9.5 (h4) in mm. 
 
+
 ```{r class.source="bg-danger", class.output="bg-warning"}
-ramus <- here::here("data", "ramus.dat") %>%
+ramus_w <- here::here("data", "ramus.dat") %>%
+  ## use View() for preview
+  ## the dataset is in wide form
   read.table(header = T, 
              row.names = 1,
              sep = ",",
              skip = 0) 
 
-head(ramus, 3) %>% knitr::kable("simple", caption = "The first 3 samples")
-tail(ramus, 3) %>% knitr::kable("simple", caption = "The last 3 samples")
+head(ramus_w, 3) %>% knitr::kable("simple", caption = "The first 3 samples")
+tail(ramus_w, 3) %>% knitr::kable("simple", caption = "The last 3 samples")
 ```
+
 
 ##
 
 ```{r class.source="bg-danger", class.output="bg-warning"}
-ramus_mean <- map(ramus[2:5], mean) 
+## map() == for loop
+ramus_mean <- map(ramus_w[2:5], mean) 
+ramus_sd <- map(ramus_w[2:5], sd) 
+ramus_se <- map(ramus_w[2:5], ~ sd(.x)/sqrt(length(.x))) 
+## present the results nicely
 ramus_mean %>% 
   as.data.frame() %>% 
   round(4) %>%
   knitr::kable("simple", caption = "Mean")
-
-ramus_sd <- map(ramus[2:5], sd) 
 ramus_sd %>% 
   as.data.frame() %>% 
   round(4) %>%
   knitr::kable("simple", caption = "Standard deviation")
-
-ramus_se <- map(ramus[2:5], ~ sd(.x)/sqrt(length(.x))) 
 ramus_se %>%
   as.data.frame() %>%
   round(4) %>%
   knitr::kable("simple", caption = "Standard error")
 
-`age (years)` <- c(8, 8.5, 9, 9.5)
 ```
 
 ## 
@@ -117,29 +120,35 @@ ramus_se %>%
 In the following graph, subject lines are in grey and the group mean function is in black.  Error bars indicate +/- 2 standard errors from the mean.  The grey lines comprise what is sometimes referred to as a spaghetti plot. 
 
 ```{r echo=TRUE}
-ramus <- here::here("data", "ramus.dat") %>%
+`age (years)` <- c(8, 8.5, 9, 9.5)
+## read the dataset
+ramus_w <- here::here("data", "ramus.dat") %>%
   read.table(header = T, row.names = 1,
              sep = ",",  skip = 0) %>%
-  rename("8" = 2, "8.5" = 3, "9" = 4, "9.5" = 5) %>%
+  rename("8" = 2, "8.5" = 3, "9" = 4, "9.5" = 5) 
+## wide to long form pivot_longer()
+ramus_l <- ramus_w %>%
   pivot_longer(cols = c("8", "8.5", "9", "9.5"), 
                names_to = "time", 
                values_to = "ramus height (mm)") %>%
   mutate(`age (years)` = as.numeric(time),
          boy = as.factor(boy))
-
+## ggplot2::geom_line()
 plot1 <- ggplot() +
-  geom_line(data = ramus, 
+  geom_line(data = ramus_l, 
+            ## must set "group"
             aes(group = boy,
                 x = `age (years)`,
                 y = `ramus height (mm)`,
                 color = boy), 
+            ## transparency
             alpha = 0.5) 
 ```
 
 ##
 
 ```{r echo=TRUE}
-plot1 +  geom_smooth(data = ramus, 
+plot1 +  geom_smooth(data = ramus_l, 
                      aes(x = `age (years)`,
                          y = `ramus height (mm)`),
                      method = "lm", se = TRUE, 
@@ -151,20 +160,23 @@ plot1 +  geom_smooth(data = ramus,
 ##
 
 ```{r echo=TRUE}
-ramus_s <- cbind(ramus_mean, ramus_sd, 
-                 ramus_se, `age (years)`) %>%
+ramus_s <- 
+  cbind(ramus_mean, ramus_sd, 
+        ramus_se, `age (years)`) %>%
   as.data.frame() %>%
   mutate_all(as.numeric) %>%
   round(4) 
 
-plot1 + geom_line(data = ramus_s, 
-                  aes(x = `age (years)`, 
-                      y = ramus_mean)) +
+plot1 + 
+  geom_line(data = ramus_s, 
+            aes(x = `age (years)`, 
+                y = ramus_mean)) +
   geom_errorbar(data = ramus_s,
                 aes(x = `age (years)`, y = ramus_mean,
-                    ymin = ramus_mean-2*ramus_se,
-                    ymax = ramus_mean+2*ramus_se),
-                width = 0.05,  position = position_dodge(0.05)) +
+                    ymin = ramus_mean - 2 * ramus_se,
+                    ymax = ramus_mean + 2 * ramus_se),
+                width = 0.05,  
+                position = position_dodge(0.05)) +
   theme_classic() +
   theme(legend.position = "none") 
 
@@ -409,6 +421,25 @@ knitr::include_graphics('figs_L2/L2-f20.png')
 ## The Ramus data
 
 The Ramus data - Ramus bone in the jaw for boys.  Each boy was measured at 8, 8.5, 9, and 9.5 years. The following SAS code can be used to carry out a standard PCA.
+
+```{r prcomp, echo=TRUE}
+## remove the boy column, and get cov matrix
+ramus_cov <- cov(ramus_w[, -1])
+## turn cov into cor
+ramus_cor <- cov2cor(ramus_cov)
+knitr::kable(ramus_cor)
+## do pca using stats::prcomp() ---------------------------------
+pca_fit <- stats::prcomp(ramus_cor, scale = F, center = F)
+vars_pca <- (pca_fit$sdev)^2
+dirs_pca <- pca_fit$rotation
+## check the pca result yourself
+# str(pca_fit)
+# knitr::kable(vars_pca)
+knitr::kable(dirs_pca)
+```
+
+## SAS code for Ramus data
+
 ```{r  echo=FALSE, out.width='86%'}
 knitr::include_graphics('figs_L2/f22.png')
 ```
@@ -433,6 +464,37 @@ Plot of $PC2$ versus $PC3$.  This graph further breaks down the kids with unusua
 knitr::include_graphics('figs_L2/f24.png')
 ```
 
+## R codes for PC's plots
+
+```{r "prcomp plot", echo=TRUE, fig.height=5, fig.width=10, out.width="80%"}
+## the projection of original data in the direction of PC's
+PC1 <- -dirs_pca[, 1] %*% t(ramus_w[, -1])
+PC2 <- dirs_pca[, 2] %*% t(ramus_w[, -1])
+PC3 <- dirs_pca[, 3] %*% t(ramus_w[, -1])
+## set up the layout of plots
+op <- par(mfrow = c(1, 2))
+plot(PC1, PC2)
+plot(PC2, PC3)
+par(op)
+```
+
+##
+
+```{r fig.height=6, fig.width=5}
+library(pheatmap)
+library(RColorBrewer)
+library(viridisLite)
+## lasagna plot is a type of heatmap
+pheatmap::pheatmap(
+  mat = as.matrix(ramus_w[, -1]), 
+  color = colorRampPalette(brewer.pal(n = 7, name ="YlOrRd"))(100),
+  border_color = "grey60",
+  cluster_rows = F,  
+  cluster_cols = F,
+  show_colnames = T,
+  show_rownames = T,
+  main  = "Lasagna plot for Ramus data")
+```
 
 ## 
 
