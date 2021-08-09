@@ -1,0 +1,81 @@
+% set the section number 
+\setbeamertemplate{section in toc}[sections numbered]
+\setbeamertemplate{subsection in toc}[subsections numbered]
+\setbeamertemplate{navigation symbols}{}
+% set the page
+\setbeamertemplate{footline}[page number]
+
+
+
+% replace makeatletter to \makeatother
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+
+% adjust for toc
+% \patchcmd{\beamer@sectionintoc}{\vspace {0.5mm}}{\vspace {-5mm}}{}{}
+
+% adjust for sidebar
+  \setbeamertemplate{sidebar \beamer@sidebarside}
+  {
+    \beamer@tempdim=\beamer@sidebarwidth%
+    \advance\beamer@tempdim by -6pt%
+    \vskip4em%
+    \insertverticalnavigation{\beamer@sidebarwidth}%
+    \vfill
+    \ifx\beamer@sidebarside\beamer@lefttext%
+    \else%
+      \usebeamercolor{normal text}%
+      \llap{\usebeamertemplate***{navigation symbols}\hskip0.1cm}%
+      \vskip2pt%
+    \fi%
+  }%
+
+  \ifx\beamer@sidebarside\beamer@lefttext%
+    \defbeamertemplate*{sidebar right}{sidebar theme}
+    {%
+      \vfill%
+      \llap{\usebeamertemplate***{navigation symbols}\hskip0.1cm}%
+      \vskip2pt}
+  \fi
+
+\setbeamertemplate{section in sidebar}%{sidebar theme}
+{%
+  \vbox{%
+    \vskip1ex%
+    \beamer@sidebarformat{3pt}{section in sidebar}{\insertsectionheadnumber
+~\insertsectionhead}%
+  }%
+}
+\setbeamertemplate{section in sidebar shaded}%{sidebar theme}
+{%
+  \vbox{%
+    \vskip1ex%
+    \beamer@sidebarformat{3pt}{section in sidebar shaded}{\insertsectionheadnumber
+~\insertsectionhead}%
+  }%
+}
+\makeatother
+
+
+
+
+
+
+
+
+\begin{frame}[allowframebreaks]
+\frametitle{Outline}
+  \begin{columns}
+  \column{10cm}
+  \tableofcontents
+  \end{columns}
+\end{frame}
+
+
