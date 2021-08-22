@@ -3,4 +3,8 @@
 .RData
 .Ruserdata
 .Rproj
-cache
+cache/
+.aux
+.out
+.log
+Julia's slides/

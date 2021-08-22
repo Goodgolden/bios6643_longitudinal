@@ -1,0 +1,558 @@
+---
+title: "BIOS6643 Homework"
+author: "Randy"
+date: "8/20/2021"
+output: html_document
+---
+
+# Review, Introductory, graphing and general exercises
+
+## Question 1:4
+
+### Question 1
+If you are given a parameter estimate {e.g., slope} and its SE, can you gauge about how significant it is?  How many times larger in magnitude does the estimate need to be than the SE for $\sim 0.05$ p-value, for a 2-tailed test?  {Think **Wald test**}
+
+### Question 2
+How can you exponentiate numbers 'near 0' in your head?
+
+### Question 3
+Researchers unfamiliar with longitudinal methods often just analyze their data with simpler methods such as t-tests, focusing on 2 time points at a time.  
+Write a summary of pro's and con's of using simpler methods versus longitudinal methods in one paragraph.
+
+### Question 4
+Consider a principal components analysis {PCA} of the **Ramus data**
+- Using the 4 measurements over time as the multiple variables used in the analysis.  
+- Interpret the 4 principal components based on the coefficients of the original variables.  
+- Do the contributions of the 4 components make sense, based on the graph of subject and average trends?  Explain.
+
+
+## *Question 5:10 
+
+_The simplest longitudinal analysis {2 time points}_.  Questions 5 through 10 relate to analysis of cholesterol data that has 'pre' and 'post' measurements.
+
+**Background**:  The data cholesterol.txt contains cholesterol levels {adapted from Rosner, 2006}.  The data are a sample of cholesterol levels taken from 24 hospital employees who were on a standard American diet and who agreed to adopt a vegetarian diet for one month.  Serum cholesterol measurements {mcg/dl} were made before adopting the vegetarian diet and one month after.  {For this exercise, "summarize results" means just give the highlights of the analysis - retype and/or cut and paste necessary info but do not include all SAS output.}
+
+### Question 5
+**Change-score model**:  Let $Y_{i1}$ and $Y_{i2}$ denote the pre and post cholesterol level for subject $i$, $i=1,\ ...,\ 24$, and let $d_i = Y_{i2}-Y_{i1}$.  Perform the linear regression of $d_i$ on the intercept alone {i.e., the model statement in PROC GLM would be "model di = ;"}.  Summarize results.
+
+### Question 6
+In the output, look at the test for the intercept.  What simple test yields the same results?
+
+### Question 7
+**Baseline-as-covariate model**:  Now perform a linear regression for the post cholesterol value, using the baseline variable as a covariate.  Summarize results.
+
+### Question 8
+Compare the change-score {CS} and baseline-as-covariate {BAC} models.  What are pro's and con's of each?  Also construct residual plots {residual vs. before} to help answer.
+
+### Question 9
+**Hybrid model***:  Consider the model of change score {$d_i$} using baseline cholesterol as a covariate.
+
+  a. Write the model {in terms of beta coefficients}.  Then re-express the model in terms of $Y_{i2}$.  Collect terms and determine the slope of the $Y_{i1}$ term.  What is the relationship between the Hybrid and BAC models?  You can answer this based on both the equation you wrote, plus the models you fit with SAS or R.
+
+  b. Write the hypotheses for the test reported in the PROC GLM output {for the 'before' variable, near the end}, in terms of  .
+
+### Question 10
+
+Fit the data using a mixed model, with an UN structure for repeated measures.  In this case, don't include baseline as covariate, since it is already an outcome.  How do results compare with the Hybrid model?  What are pro's and con's of each approach?
+
+
+## Question 11:12
+Questions 11 and 12 are statistical theory review questions, and consider random walks and first-order autoregressive processes.
+
+### Question 11
+Consider the random walk defined by $Y_t = Y_{t-1} + B_t$, where $B_t=1$ with probability 0.5 and -1 otherwise {$B_t$, $t = 1,\ 2,\ ...$ are iid} and $Y_0 = 0$.  Let $t$ and $h$ be nonnegative integers.
+	a. Determine $E[Y_t]$.
+	b. Determine $Cov[Y_t, Y_{t+h}]$
+	c. Determine $Corr[Y_t, Y_{t+h}]$
+	d. Is $\{Y_t\}$ a stationary process?
+
+### Question 12
+Consider a first-order autoregressive process, $\epsilon_t = \phi \epsilon_{t-1} + Z_t$, where $Z_t \sim \mathcal N{0,\ \sigma^2}$, where $t$ is an integer for discrete units of time {e.g., days}, and $|\phi|<1$.  In order to derive the quantities below, say that this is an 'infinite process' {i.e., $t$ extends backwards in time to infinity}. 
+First, by iteration we can show that $\epsilon_t=Z_t+\phi Z_{t-1}+...+\phi^k Z_{t-k}+\phi^{k+1} \epsilon_{t-k-1}$.  If we keep going, we get the expression $\epsilon_t=\sum_{j=0}^\infty \phi^j Z_{t-j}$.
+
+[We can show that this equality holds since $\sum_{j=0}^k \phi^j Z_{t-j}$  is mean-square convergent as $k \rightarrow \infty:  E[X_t - \sum_{j=0}^k \phi^j Z_{t-j}] ^2 = \phi^{2k+2}E[X_{t-k-1}^2] \stackrel {k\ \rightarrow\ \infty}{\longrightarrow} 0$ since $E[X_t^2]$ is constant over $t$.]
+
+	a. Determine $E[\epsilon_t]$
+	b. Determine $Cov[\epsilon_t, \epsilon_{t+h}]$
+	c. Determine $Corr[\epsilon_t, \epsilon_{t+h}]$
+	d. Is $\{\epsilon_t\}$ a stationary process?
+
+## Question 13:17
+
+**Global temperature data** and various modeling approaches.  Questions 13-17 relate to this data.
+
+**Background**:  Here, we have time series data.  The primary point of the exercise is to better understand the two main parts of a predictive model, the mean and error.  Use PROC MIXED in SAS to fit the linear time trend with AR(1) error model with the [global average temperature data](https://www.ncdc.noaa.gov/cag/time-series/global).  Temperatures are for 1880-2019, mean-corrected (or 'anomalies') based on 20th Century average, reported in $^{\circ}C$, and for land and ocean combined.  These are newer data than those in the lecture notes.  Below is SAS code that you can use to fit the model.  The **'subject=intercept'** option tells SAS there is one process.
+
+\tiny
+	proc mixed data=teaching.global_temp_anomalies method=ml;             
+ 		model temp=year / solution outp=tempout;                 
+		repeated / type=AR(1) subject=intercept; run;          
+
+\normalsize
+
+### Question 13
+
+Create a Residual plot (residuals versus year) based on the fitted data from the model ($\hat y_t= \hat \beta_0+\hat  \beta_1 t$ are predicted values; $y_t - \hat y_t$ are residuals). What patterns do you notice? What do you think the plot is telling you?
+
+### Question 14
+
+In order to get a better idea whether the AR(1) process with linear time trend appears to fit the global temperature data, create a new residual plot using residuals that take into account both the mean and error parts of the model.  
+
+Specifically, the new residual is $y_t-\tilde y_t$ where $\tilde y_t= \hat y_t + \hat\phi \nu_{t-1}$ and $\nu_t=y_t-\hat y_t$.  [Note:  PROC AUTOREG computes these type of residuals directly, but we'll stick with PROC MIXED since that's what we'll be using later in the course.]  You can create these new residuals in a data step.  Use the estimated correlation parameter from the SAS output.  Based on this plot, what is your opinion about how the model fits the data?  [Notes:  in creating the new residuals, you can obtain the correlation parameter estimate from the PROC MIXED output; to align '$t$' and  '$t-1$' data, you can use the lag function in SAS.]
+
+### Question 15
+
+Based on your fitted model, what is the average increase in temperature per decade?
+
+### Question 16
+
+Try refitting the data using a polynomial trend for time (decide on the degree of the model by looking at the plot).  How does the model fit compare with the one that using a simple linear trend for time?  What happens to the correlation parameter estimate in this new model?  What do you think about this fit compared with the simple linear model?  (In answering this, don't worry about the '0' SE for higher-order terms; just focus on the fit itself.) 
+
+### Question 17
+
+Perform a nonparametric regression fit of the data using PROC LOESS.  Construct a residual plot and histogram.  Do you think this a better/worse/different fit compared with the parametric fits with AR(1) errors?  Explain.
+
+\tiny
+proc loess data=teaching.global_temp_anomalies;       
+
+ 		ods output scoreresults=scoreout           
+            outputstatistics=statout;            
+ 		model temp = year / smooth= 0.3 residual clm degree=1;          
+score data=tempout / clm; run;         
+\normalsize
+
+### Question 18
+
+Based on the 3 different fits that you tried in exercises 13-17 (simple linear with AR(1) errors; polynomial fit with AR(1) errors; LOESS regression fit), discuss the relationship between the mean part of a regression model, and the error part.  Specifically, what happens to the error part of the model when the mean part is made to be simpler?  More complex?
+
+\newpage
+
+# GLM
+
+## Question set
+
+### Question 19
+
+Consider using PROC GLM in SAS to fit a regression model.  If one of the predictors is gender, coded as an indicator variable (e.g., '1' for Female and '0' for Male), you will essentially get the same model fit whether or not you put this variable into the CLASS statement.  Thus, although it is clearly not a continuous variable, we can treat it as such when fitting the model.  Briefly describe why this is the case.  In R, the same question can be asked, where using gender with or without the factor argument in the 'lm' function (still considering gender coded as 1 and 0).
+
+### Question 20
+
+For the one-way effects model $Y_{ij}=\mu + \kappa_i + \epsilon_{ij}$, show that $\kappa_i- \kappa_{i′}$ is estimable for any pair of different treatment levels $i$ and $i′$.  (See page 65 in the GLM notes.)
+
+### Question 21
+
+Using the linear form result, derive the distributions for the following quantities.
+	a. $\pmb {\tilde \beta}  = (\pmb X^t \pmb X)^{-} \pmb X^t \pmb Y$ for a GLM
+	b. $\pmb L \pmb {\tilde \beta}$ if $\pmb L=\pmb a^t \pmb X$ form some vector $\pmb a$
+
+### Question 22
+
+Complete the practice quiz at the end of the GLM chapter of the course notes, page 103.
+
+### Question 23
+
+For the **Myostatin data**, note that the population mean for the myostatin group at 48 hours is $\mu + \kappa_5$ for the one-way effects model {see the course notes}.  Write the population means for the following.  NOTE:  these are not numerical estimates, but parameters or combinations of parameters.
+
+	a. Myostatin group at 48 hours; means model.
+	b. Myostatin group at 48 hours; two-way effects model.
+	c. Myostatin group, difference between 48 and 72 hours, one-way effects model.
+	d. Myostatin group, difference between 48 and 72 hours, two-way effects model.
+
+### Question 24
+
+Top 5 race times by individual age and gender were recorded for the 1995 Bolder Boulder 10K race.  We are going to model race time as a function of age and gender, including linear and quadratic terms for age, as well as age $\times$ gender and age2 $\times$ gender interaction terms, for 30 to 60 year-old males and females.  Here, we don't have a random sample; these are extreme values since they are the fastest times for each age, but we are more concerned with curve fitting than inference.
+
+	a. Write the model in terms of a single outcome {i.e., not in matrix form}.
+	b. Write  $\pmb \beta$  and the first 10 rows of $\pmb X$ for the matrix model {get the data from the course web site}.
+	c. Analyze the data with PROC GLM.  Write the fitted functions for 10K race times by age separately for men and women.
+	d. Graph the data using either SAS or R.  Use different symbols for males and females and superimpose the fitted functions.
+
+### Question 25
+
+Consider a 3 $\times$ 2 factorial experiment with 2 replicates in each treatment combination.  The data will be analyzed using the model $Y_{ijk} = \mu + \alpha_i+\tau_j+\epsilon_{ijk},\  i=1,\ 2,\ 3;\ j=1,\ 2;\ k=1,\ 2\ \{k\ for\ replicate\}$.
+
+	a. Write the  $\pmb \beta$  and $\pmb X$ matrices for the general linear model for the effects model shown above.
+	b. What is $r(\pmb X)$?
+	c. Are the following estimable?Justify your response.
+	  i. $\mu$           
+	  ii. $\alpha_3$          
+	  iii. $\mu + \alpha_3$          
+	  iv. $\mu + \alpha_3+\tau_2$
+
+	d.For the bread data {Neter, p. 686; posted on web page} determine the following using SAS PROC IML, R, or other software, based on the less-than-full-rank model written above.  
+	  i. $\tilde \beta$
+	  ii. $\pmb {\hat y} = \pmb P_X \pmb y= \pmb {X \tilde \beta}$
+	  iii. $SE [\hat\mu + \hat\alpha _3+\hat\tau _2]$
+
+### Question 26
+
+Show that $\pmb {\tilde \beta} = (\pmb X^t \pmb X)^- \pmb X^t \pmb Y$ satisfies the normal equations.  (Here, tilde indicates that the beta estimate may not be unique.)
+
+### Question 27
+
+For the GLM, $\pmb Y= \pmb X \pmb \beta + \epsilon$, the least squares solution for $\pmb \beta$  minimizes the sum of the squared errors, which can be expressed as $\pmb \epsilon^t \pmb\epsilon=(\pmb Y- \pmb {X \beta})^t (\pmb Y- \pmb {X \beta})$.  Note that $\epsilon^t$  is $1 \times n$ and $\epsilon$ is $n \times 1$ so that the sum of the squared errors is a scalar {1 number}.  First, expand the quantity on the right, and take the derivative of this quantity with respect to  $\pmb \beta$, set it to $\pmb 0$, and then solve for $\pmb \beta$.  For 'rules' about taking derivatives of matrices and vectors, see the course notes.
+
+### Question 28
+
+Consider a study or experiment that has two factors {e.g., group and time}; each factor has 4 levels and will be treated as a class variable.  We will create a model for response '$y$' as a function of group, time and $
+group $\times$ time; there are 3 replicates for each group-time combination.
+  a. How many columns are in $\pmb X$ for the less-than-full-rank model?
+	b. If you were to write a full-rank statistical model for these data, how many parameters would there be?  {i.e., how many columns are in $\pmb X$ for a full-rank model?}
+
+\newpage
+
+
+# LMM
+
+## Question set
+
+### Question 29
+
+In previous courses you may have been told that for a class variable in a GLM or LMM, you need to pick one level as the reference, and that the estimates for other levels become a comparison to the reference.  Using concepts of estimability in a less-than-full-rank model, prove that this is true.  To make the argument, consider SAS's approach to determining a g-inverse, such as we did in class.
+
+### Question 30
+
+Derive $Var[\pmb {\hat\beta}]$ in a full-rank LMM, given the algebraic form of  $\pmb {\hat \beta}$  that is obtained via ML estimation.  NOTE:  there are two types of variance, model-based and empirical {or sandwich}.  The difference is whether the middle '$V$' is determined via the model or using squared residual quantities; derive the model-based form.  To answer this question, work with the 'complete data' form of  $\pmb {\hat \beta}$.
+
+
+### Question 31
+
+Derive $Var[\pmb {\hat \beta}]$ in an LMM, given the algebraic form of  $\pmb {\hat \beta}$ that is obtained via ML estimation.  NOTE:  there are two types of variance, model-based and empirical.  The difference is whether the middle '$\pmb V$' is determined via the model or using squared residual quantities; derive the model-based form.  To answer this question, work with the 'complete data' form of  $\pmb {\hat \beta}$.
+
+
+### Question 32
+
+Determine the structure of the $\pmb V_i$ matrix for a mixed model with a random intercept and random slope for {continuous} time for subjects, and the 'simple' error covariance matrix $\pmb R_i=\sigma^2\pmb I$.  For ease of computation, let the time points for subject $i$ be 1, 2, 3, and 4.
+
+
+### Question 33
+
+For a linear mixed model that could either be full rank or less than full rank, for $\pmb {L \beta}$  that is estimable, determine $Var[\pmb {L \hat \beta}]$.  A couple of tips:
+
+  a. the M-P inverse of a square symmetric matrix is also symmetric';
+  b. we know that $\pmb P_X=\pmb X(\pmb X^t \pmb X)^- \pmb X^t$ {in a GLM} is unique, i.e., not dependent on the *$g$-inverse* used; it is also true that $\pmb X(\pmb X^t \pmb V^{-1} \pmb X)^- \pmb X^t$ is unique in an LMM.
+
+### Question 34
+
+In a short paragraph, explain the difference between a general linear model (GLM) and a linear mixed model (LMM).  {Note:  I distinguish a general linear model, GLM, from a generalized linear model, which I denote as GzLM.}
+
+### Question 35
+
+For the either the Dog data or Beta Carotene data, design and compute 2 contrasts and 2 estimates {other than those done in class or previously}.  Create your tests and estimates based on what you think is interesting.  With the output, write up your results in a few sentences.
+
+### Question 36
+
+{From a real project I am working on, Summer 2020}  Consider the COPDGene study, where progression of adjusted lung density based on a CT scan is estimated from Visit 1 to Visit 2.  There are several covariates in the model, including age, gender, race {W, B}, height, BMI, time {V1, V2}, emphysema at baseline {low, high} and smoking status.  We are interested in whether progression differs over time for the 2 races, separately for those with high and low emphysema.  For visit {V}, race {R} and emphysema {E}, all interactions up to the 3-way will be included.  Say that visit, then emphysema, then race are entered in that order for the CLASS statement and MODEL statement.
+	a. Write an estimate statement to estimate the change over time {V2 - V1} for Whites with low emphysema.
+	b. Repeat part a, for Blacks.
+	c. Write the estimate statement to compare the 2 races {i.e., part a compared with b}.
+	d. Repeat part c, but for high emphysema rather than low emphysema.
+	e. Now compare low and high emphysema estimates, i.e., part c compared with d.  Does your answer make sense?  Explain.
+
+### Question 37
+
+For the Fitness data, consider the analysis carried out by using the code.  Answer the following parts based on this.
+
+\tiny 
+proc mixed data=fitness;
+  class program time id;
+	  model y=program time program*time;
+  random intercept / subject=id{program}; 
+  lsmeans program*time / cl; run;
+\normalsize 
+
+	a. Determine $rank[\pmb X  \pmb Z]$.
+	b. Determine the denominator degrees of freedom {DDF} for F-tests for group, time and group $\times$ time using the Containment method.  Note that the RANDOM statement includes syntax for 'program'.
+	c. How do DF change if we only use 'subject=ID' rather than 'subject=ID{program}'?
+	d. Determine the DDF for the residual method.  How does it compare with that of the containment method?
+
+
+### Question 38
+Let $\pmb Y$ be the complete outcome that will be fit with an LMM {subjects stacked}.  In building a likelihood function, we talked about how you can first obtain the multivariate normal PDF for one subject {that accounts for repeated measures}, then multiple the densities across subjects to get the complete likelihood.  How do we obtain the likelihood if subjects are not independent?
+
+### Question 39
+Consider the LMM in complete data form.  Determine the distributions of the following.
+	a. $\pmb Y$
+	b. $\pmb Y|\pmb b$
+
+### Question 40
+
+In the course notes I treat the Dog data as if were classical repeated measures {repeated measures over time, but not treatment}.  In fact, the actual experiment involved only 6 dogs, with repeated measures over both time and treatment.  Compare and contrast analyses that {wrongly} assume that data are classical repeated measures over 18 different dogs, versus the correct approach that assumes there are only 6 dogs and repeated measures over both time and treatment.  Write a short paragraph to summarize your results.
+
+### Question 41
+
+Consider a study where subjects in 3 groups {e.g., race or treatment} are observed over 3 equally spaced times and some health outcome, y, is measured.  Unless otherwise mentioned, include a random intercept for subjects to account for the repeated measures.  For simplicity, use 2 subjects per group.
+
+	a. Consider modeling group and time as class variables, plus interaction.  Write statistical models and the $\pmb X$ matrix for the following cases.
+
+  	i. No restriction placed on the model.  i.e., write the less-than-full-rank statistical model.
+	  ii. A set-to-0 restriction is placed on the parameters associated with highest levels.
+	  iii. sum-to-0 restriction is placed on the parameters associated with highest levels.
+
+	b.Show that the linear trend for one group compared to another {say Group A versus B} is estimable by showing that $\pmb L=\pmb {LH}$, where the Moore-Penrose inverse is used in calculating $\pmb H$.  First you need to construct $\pmb L$. {As a check, you can repeat using SAS's g-inverse in calculating $\pmb H$, but you don't need to turn that in.}
+	
+	c. How would answers in a change an AR(1) structure for R is included?  {You do not need to rewrite entire models, just mention what changes}.
+	
+	d. Say that Time is treated as continuous {i.e., not included in the CLASS statement in SAS or factor argument in R}.  Rewrite the models and $\pmb X$ matrices in a.  Say the linear term for Time is sufficient.
+	e. Say that the times of observation were at 0, 1 and 6 months rather than equally spaced.
+	  i. Would it be appropriate to treat time as a class variable in this case?  Explain.
+	  ii. Suggest a structure for $\pmb R_i$ and write it out.
+
+### Question 42
+
+Consider the following LMM in observation form:  $Y_ij=\beta_0+ \beta_1 x_{1ij}+ ... + \beta_{p-1} x_{p-1,ij}+b_i+\epsilon_{ij}=\pmb X_{ij} \pmb \beta +b_i+\epsilon_{ij}$, where $i$ denotes subject and $j$ denotes time.  Errors $\epsilon_{ij} \stackrel {iid} {\sim} \mathcal N(0,\ \sigma_\epsilon^2)$ independent of $b_i\stackrel {iid} {\sim} \mathcal N(0,\ \sigma_b^2)$.  Determine the following:
+	a. $Var[\pmb Y_i]$
+	b. $Var[\pmb \epsilon_i] = \pmb R_i$
+	c. $Corr[\pmb Y_i]$
+	d. $Var[\pmb Y_i|b_i]$
+
+### Question 43
+
+The projection matrix for an LMM
+
+	a. The generalization of the projection matrix is $\pmb P_X= \pmb X(\pmb X^t \pmb V^{-1} \pmb X)^- \pmb X^t \pmb V^{-1}$.  Would you agree or disagree?  Explain.  Hint:  we know $\pmb P_X \pmb Y= \pmb {X {\hat \beta}}$ {for predicted mean values that do not include random effect estimates}, and so for any vector $\pmb Y$, you project it onto the column space of $\pmb X$ as seen by the right-hand side of the equation; the solution is a linear combination of the columns of $\pmb X$.
+	b. We know that for a GLM, the projection matrix is symmetric and idempotent.  Show that $\pmb P_X$ is idempotent ${\pmb P_X \pmb P_X = \pmb P_X}$. 
+	c. Show that $\pmb P_X$ is not necessarily symmetric.  {Note:  in Lovison, 2018, they show that there is an 'augmented scaled' version of the projection matrix that is both symmetric and idempotent, and is thus a better generalization of the projection matrix of the GLM to an LMM.}
+
+### Question 44
+
+**Discussion question**:  Say that an outcome involves reported surgical complication rates, and a random intercept is included for participating hospitals.  The complications mainly involve adverse events or complications that arise during or after the surgery is performed.  Describe potential sources of variation that might be captured in the variance of the random intercept for hospitals.  You can think both in terms of populations of subjects that visit hospitals as well as hospital staff and procedures.  Note that this is just hypothetical; just think of possibilities.
+
+### Question 45
+
+Say that you add a random intercept and slope for time in a model for certain longitudinal data, where time is continuous.  Explain why you also should have a fixed-effect term for time in the model.
+
+### Question 46
+
+Review Section 3.6.3 in the GLM course notes.  {Note:  this section could naturally be in the LMM chapter since it is discussing models indexed by subject and time.  However it could apply to GLM applications such as the Myostatin data, where different experimental units are measured at each time point.}
+	a. Write full-rank and less-than-full-rank models if there is a group variable with 4 levels {i.e., 4 groups}, a time variable that is treated as a continuous variable {linear term only}, plus group $\times$ time interaction.  How many columns are in $\pmb X$ for each approach?
+	b. If time points are unequally spaced then would it be appropriate to treat time as a class variable?  Explain.
+
+### Question 47
+
+Consider a basic science experiment conducted where cell counts are measured at 4 time points for samples taken from individual subjects or animals.  A linear mixed model will be fit for the data {perhaps after log transformation}, and fixed effects will be included for time, and possibly treatment group as well as their interaction.  
+
+To answer this question we do not need to know the specific form of $\pmb {X \beta}$.
+
+Determine the structure for $\pmb V_i$ if a random intercept for subjects will be included, plus an AR(1) structure for the error covariance matrix {$\pmb R_i$}.  What does the combination of non-simple $\pmb R$ and $\pmb G$ allow you to do in modeling covariances that using only one cannot do?  Discuss in a few sentences.
+
+### Question 48
+
+One model we used for the **Mt. Kilimanjaro** data included random effects for subject, up to the quadratic term {plus covariances between random effects}, along with a simple $\pmb R$ structure.  {We did find at least one model with a better AIC, but let's focus on this one for now.}  We talked about how including multiple random effects can induce a covariance structure that is time sensitive {or in this case, altitude sensitive}.  Show this by considering a simple data set and model.  In particular, let times be $t=0,\ 1,\ 2$, and consider a model that includes a random intercept and slope for time by subject, plus covariance between them {i.e., UN structure in $\pmb G$}.  Show that it is possible to obtain $Cov[Y_{i1},\ Y_{i2}] > Cov[Y_{i1},\ Y_{i3}] < Cov[Y_{i2},\ Y_{i3}]$, i.e., decaying covariance as distance between time points is increased.  For what covariance parameter values will these hold?
+
+### Question 49
+
+Consider a study where children are sampled from schools, and then measured over time.  We will include a random intercept for schools and for subjects within schools {but simple $\pmb R$}. Determine $\pmb V_h$, the covariance matrix for school h, if there are 3 children sampled from this school, where the first two kids have 3 measures and the last has 2.  You might find it helpful start by writing the model for outcome $Y_{hij}$ and determining the design matrix for the random effects.  {You can just write something generic for the fixed-effect part of the model.} **For thought, not to turn in**:  how would $\pmb V_h$ change if we had more measures for subjects and employed the AR(1) structure for $\pmb R_{i(h)}$ {the error covariance structure for subject $i$ within school $h$}?
+
+
+### Question 50
+
+Fit the *Beta Carotene* data using a continuous model for time, including group and group $\times$ time in the model.  {For a description of the data, see the file in the HW folder.}  Determine the degree of polynomials for time that is important and sufficient for the model.  For covariance structure, define the UN structure for $\pmb R$.
+
+  a. Write your final model, fit it and compare it to the model that used group, time and group $\times$ time as class variables.  Which would you go with in a final report?  Explain.  NOTE:  in comparing model AIC's use method=ML for a more apples-to-apples comparison, particularly when changes are being made to the fixed effects.
+	b. Write an estimate or contrast statement for your continuous model based on what you think is interesting.  The custom estimate and/or test could involve a subset of the data {e.g., comparing 2 specific groups}, or the whole data.
+
+### Question 51
+
+We can use SAS or R to fit linear mixed models directly with relatively short code.  This semester we have talked a lot about matrix quantities and in HW2 you derived the form of $Var[\pmb {L \hat \beta}]$.  For this exercise, I would like you to carry out t tests for the test of linear trend {considering age as class} or for the slope of age {considering age as continuous} for the **Ramus data** using a matrix quantity approach, in order to better learn what is going on 'behind the scenes'.  Make sure data are sorted consistently for each part of the quantity you are calculating {e.g., sort all elements by boy and then age}.  Use the AR(1) structure for R, and no random effects.  You can use R or SAS PROC IML, although I have included some R code below that you might find helpful; use the given estimated covariance parameters via REML as a starting point.  The form of the test statistic you will need is 
+$t = \pmb {L \hat \beta}/SE[\pmb {L \hat \beta}]$.  You can work with subject-level or complete data forms for estimates and variance quantities of interest, or both {see p. 141 in course notes, HW2, #3 and note that $\pmb X^t \pmb V^{-1} \pmb X= \sum_i \pmb X_i^t \pmb V_i^{-1} \pmb X_i$  when subjects have the same structure and repeated measures}.  Once you have obtained the test statistics, determine the p-values using a relevant function {need the degrees of freedom for the test}.  You can always check your work {and get the correct DF} by fitting an LMM in SAS or R using standard methods.
+
+	a. Perform the t-test for the slope of age in predicting Ramus bone height in two ways {stated below}.  Turn in your brief code and output, and write a sentence to interpret the results, meaningful to the application.
+	
+	  i. Use age as a class variable and then perform the t-test for linear age trend.  {Starting point: residual variance=6.8793; correlation=0.9527}
+  	ii. Use age as continuous and perform the t-test for the slope of age.  {Starting point: residual variance=6.8783; correlation=0.9542}
+  	
+	b. If you were to publish the results in a journal article, would you go with Approach a or b?  Or does it matter?  Briefly justify your response.
+
+_Helpful R code {this is relevant for 1a; you will need to tweak for 1b}_:
+
+# The package below allows you to use ginv function (Moore-Penrose inverse of a 
+# less-than-full-rank matrix
+library{MASS}
+
+# Create X_i, the subject-level X matrix
+X_i=matrix{c{1,1,1,1,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1},nrow=4,ncol=5}
+
+# Create X, the complete data X matrix
+X=NULL
+for{i in 1:20}{X=rbind{X,X_i}}
+
+# Create V_i, the subject-level Var{Y} matrix.  
+# Note that covariance parameter estimates are given for part a.
+sigma_e_sq=6.8793;  phi=0.9527
+V_i=sigma_e_sq*matrix{c{1,phi,phi^2,phi^3,phi,1,phi,phi^2,phi^2,phi,1,phi,
+phi^3,phi^2,phi,1},nrow=4,ncol=4}
+
+#Create V, the complete data V matrix
+V=kronecker{diag{20},V_i}
+
+GzLMM material
+
+	Consider the generalized linear mixed model g{\mu _ij }  =X_ij^r  \beta +Z_ij^r b_i, where \mu _ij=E{Y_ij |b_i,x_ij }, b_i~N{0,G_i }, and Z_ij^r is  the jth row of Zi, the covariate matrix for subject i, associated with random effects bi.  Write forms of E{Yij| xij, bi=0} and E{Yij|xij} for outcome variables with the following distributions; reduce as much as possible.  {Note:  conditioning on x is usually done in regression but not always stated.}
+	Normal
+	Binomial
+	Poisson
+
+The following questions {51-57} involve short or open-ended answer.
+
+	Does the GzLM have an error term?  What about a GzLMM?  For the latter, consider the 2 common approaches to fitting a GzLMM {approximating the true likelihood, and the linearation approach using a Taylor Series expansion}.
+
+	What does a link function do in a GzLM or GzLMM?
+
+	What are the 3 components of a GzLM?
+
+	How does the link function differ between a GzLM and a GzLMM?
+
+	What are the 3 basic ways to model longitudinal non-normal outcome data?  What are the pro's and con's on the 3 methods above?
+
+	What is the difference between a mixed model and a mixture model?
+
+	Explain the difference between the following types of likelihoods and when they are used.  Note that a-c are common for LMM's, while d-e are common for GzLMM's or GLM's with GEE.
+	Standard ML
+	Restricted {REML}
+	Profiled
+	Quasi-likelihood
+	Pseudo-likelihood
+
+
+From Gary Grunwald
+
+By far the three most common cases for generalized linear models are for normal, binary, and count outcomes.  Since you have seen so many examples of normal {standard linear models} and binary {logistic regression}, these questions involve count outcomes.
+
+	The Excel file Cereal2.csv contains data from a nutrition study where several members of each of a number of families recorded the number of servings of breakfast cereal they ate each week starting at baseline and continuing for 14 weeks.  Some families were in an experimental program {cond=1}, the others did not receive anything special {cond=0}.  Family members were coded 1=Mom, 2=Dad, 3=Kid1, 4=Kid2, 5=Kid3, 6=Kid4, 7=Kid5.  Sex is coded 0=Male, 1=Female.  Weight at baseline has been recoded in units of 100 lbs {so 1.5 = 150 lbs} to avoid numerical problems in some procedures.  Note:  To get agreement between GENMOD and NLMIXED you need to use a new variable Cond2 = 1 - Cond for the condition variable.  This just gives a different parameterization.  In this question you will analyze only the week 1 {baseline} data, C1.  There was some question as to whether the experimental and control groups were comparable at this time because some aspects of the intervention may have been done before week 1.  Carry out the following analyses to compare the groups at baseline, using data only from Kid1 {FamMem=3} - families were sampled based on this child.  For each model, write the model equation, and write a sentence describing the results, understandable by dietitians.
+
+	Use a Poisson GzLM {i.e. Poisson regression} to estimate the association between condition and number of breakfast servings, adjusting for sex and weight.  
+	Repeat {a} allowing for overdispersion by using quasilikelihood with the Poisson GzLM.  Use the Pearson method for estimating the scale parameter.  Show algebraically the relation between the QL SEs for the betas and those from the Poisson model in {a}.
+	Repeat {a} allowing for overdispersion by adding a random normal error to the linear predictor in the Poisson GzLM and using maximum likelihood estimation.  I am not aware of an algebraic relation between these ML SE's and those from the models in {a} or {b}.
+	Repeat {a} allowing for overdispersion by using a Negative Binomial GzLM estimated with maximum likelihood.  I am not aware of an algebraic relation between these ML SE's and those from the models in {a}, {b}, or {c}.
+
+	As before use data for kid 1 only, at baseline only {C1}, as in question 1 above.  You don't need to fit any new models.
+a.	Use the chart below to summarize the models you fit in question 2 comparing Conditions and adjusting for Sex and Weight.  In each entry except 'Intercept' and 'Other param' give the estimate of the rate ratio and a 95% CI {these are easy to calculate from the beta and SE}.  For 'Intercept' give the beta and its SE.  For 'Other param', give the Scale parameter for QL, the SD for the normal error model, or the dispersion parameter for NB.  QL=Quasilikelihood, NB=Negative Binomial.
+b.	Write a short paragraph summarizing the results of comparing conditions, e.g. which condition gives higher consumption and by how much.
+c.	Write a short paragraph comparing the model fits, e.g. differences between parameter estimates across models.
+
+	Poisson regression	Poisson QL	Poisson + normal error	NB NLMIXED
+Intercept	
+			
+Cond	
+			
+Sex	
+			
+Wt	
+			
+Other param	NA			
+
+	Consider modeling the number of patients who seek treatment each day for pain management at each of the dozens of VA clinics treating such patients.  The number of patients varies across clinics, and typically ranges from zero to more than 10 each day.  Investigators would like to study how the number depends on day of week and time of year, as well as clinic variables like rural/urban, number of available clinicians, etc.  What are the main issues a good model should address?  Propose one or more models for this situation.
+
+	We talked about over- and under-dispersion for Poisson counts.  Can such things also occur for Binomial counts, with n>1?  For example, let Yi~Bin{ni, pi} with ni>1.  A specific example would be ni is the number of doses of medication patient i is prescribed during a given day, and Yi is the number they took {Yi ≤ ni}.  pi is a function of covariates for patient i.  What are the main issues a good model should address?  Write models for this situation using Binomial versions of the three approaches we talked about for over- and under-dispersed Poisson counts.
+
+	Consider modeling cost in dollars of hospitalization for a group of patients at a single hospital, based on their illnesses and other risk factors.  Assume all patients have some treatment and so have some cost.
+	Since cost positive and is highly skewed, a model is proposed based on cost being exponentially distributed conditional on covariates.  Why do you think this model will have problems?  Explain in terms of over- and under-dispersion.
+	Consider a model that assumes cost has a gamma distribution conditional on covariates.  What would be the advantage of this model over the one in a?
+	For a Gamma model, write the equation for a GzLM.  Hint: Parameterize the Gamma distribution in terms of its mean and one other parameter.
+	Explain in words, no equations, what serial correlation would mean in binary {0/1} data, ie what pattern in the data would indicate positive autocorrelation and what pattern would indicate negative autocorrelation.
+
+	A study is planned where data will be collected on asthmatic subjects on every weekday for one month.  There are two outcome measures of interest, {i} medication use counts and {ii} FEV1.  You are the statistician and the PI is looking for your suggestions about models to use.
+	If it is anticipated that responses within subjects over time are serially correlated {but with some decay the further measurements are apart} for both outcomes, what SAS procedure {or R package/function} would you suggest using to fit the data?  Answer separately for each outcome.
+	Related to a, talk about how you would set up the data and specify the REPEATED statement in SAS {or comparable code for R} for each outcome, so that the correlation between responses is accounted for properly, including gaps caused by no measurements on weekends.  {NOTE:  to deal with unequal spacing in GzLM/GEE, you need to include records for equally spaced time points and fill in with missing values as necessary, e.g., for weekends as described above; we will discuss this more soon.}
+	Say that we now consider an indicator of whether subjects used medication or not on a given day {no use=0, at least 1 use=1}.  In this case, the researcher is more concerned about accounting for general differences between subjects in the model {e.g., on one extreme there may be big users and on the other, very little users} than accounting for serial correlation {although the latter may still exist}.  What procedure would you suggest using if you wanted to account for between-subject variability of use, and also approximate the true likelihood in estimation?  What are the drawbacks of this approach?
+	For part c, suggest a procedure you might use if you wanted to include both a random intercept for subjects in the model, as well as account for potential serial correlation of repeated measures.  What are the drawbacks of this approach?
+
+	In class we have discussed the albuterol data, which involves children who take rescue medication for their asthma.  They take this 'as needed' {i.e., based on how they feel} but are also prescribed to take it {i.e., 'pre-treats'}.  We would like to see how the daily albuterol use counts relate to air pollution measures, controlling for other covariates.  The air pollution variable used here is ln{morning hourly maximum PM2.5}.  To help account for the pre-treats, the indicator variable Friday was included in the model {the one day they did not receive pre-treats since there is no gym class}.  Often meteorological variables are also controlled for in air pollution models; here we will include temperature, pressure and humidity.  Complete the following.
+	Run GEE and use the MODELSE option in the REPEATED statement to incorporate the scale parameter into the GEE process.  Highlight the results.  Does adding the scale parameter into the process modify the SE's up or down?  Use the AR(1) working covariance structure.
+	Now fit the GzLMM using RSPL approach {the default method in PROC GLIMMIX}.  Include a spatial power structure to account for serial correlation {use 'date' as the indexing variable}.  Highlight the results. How does the scale parameter in GEE compare with the residual variance in the GzLMM PL approach?  {Recall that the residual variance in GzLMM PL acts as the scale parameter; make sure to compare apples-to-apples, though; see the updated s13 slides.}
+	Do the scale / residual variance estimates suggest over or under-dispersion in the data {considering Poisson distribution}?
+	How do slope estimates and SE's for ln{mmPM2.5} differ between the GEE and GzLMM PL approach?  What about these SE's compared to the empirical SE of GEE {which is also given in default output}?
+	In a sentence, interpret the relationship between morning particulate matter {1 hour maximum} and children's albuterol use.  In order to make the slope more meaningful, interpret the effect per SD increase in the pollutant variable.  Use the GzLMM PL estimate to do this.
+
+	Consider the exacerbation data fit using a GzLMM using pseudo-likelihood estimation, accounting for both serial correlation and subject heterogeneity by including a random intercept; results shown on the right side of slide 20 of the s13 GzLMM linearization slides.
+	Manipulate and interpret the parameter estimates for B_DAY and B_WKEND for the layperson.  Does your answer change if you rescale the day effect to a week or month?  Do the two SAS approaches differ much?  
+	Do the slope estimates have subject-specific or population-averaged interpretations?  Explain.
+	If you were to fit the data using GzLM/GEE, how would you expect the beta estimates to change, relative to those using the GzLMM fits.  Explain.  {Think in terms of SS versus PA effects.}
+
+	Write a 1-page summary of how we estimate the fixed-effect coefficients {i.e., Betas} in the following models, as well as how the variance of the Beta is determined.  {I may need to help you a bit more for the variance part for some of the models; we'll discuss a bit more in class.}
+	LMM {ML and REML estimation}
+	GzLM/GEE {quasilikelihood estimation}
+	GzLMM, quadrature {maximum likelihood estimation}
+	GzLMM, linearization {pseudo-likelihood estimation}
+
+	Consider the generalized linear mixed model g{\mu _ij }  =X_ij^r  \beta +Z_ij^r b_i, where \mu _ij=E{Y_ij |b_i,x_ij }, b_i~N{0,G_i }, and Z_ij^r is  the jth row of Zi, the covariate matrix for subject i, associated with random effects bi.  Write forms of E{Yij| xij, bi=0} and E{Yij|xij} for outcome variables with the following distributions; reduce as much as possible.  {Note:  conditioning on x is usually done in regression but not always  stated.}
+	Normal
+	Binomial
+	Poisson
+
+	Consider the albuterol use data fit with PROC GENMOD with GEE, shown on slide 23 of s10 GEE slides.
+	Often, slope estimates are expressed for a more common increase in the predictor, rather than 'per unit' increase, to improve their interpretability.  Determine the relative increase in albuterol use for a 10 \mu g/m3 increase in mmaxpm25 {morning maximum PM2.5}.
+	Another way to get meaningful slope estimates so that slopes of different predictors can be compared with each other is to standardize them per SD increase or IQR {interquartile range} increase.  Determine the relative increase in doser use, per IQR increase in mmaxpm25, and compare it with that of temperature 
+{ͦ F} and relative humidity {%}.  The IQRs for mmaxpm25, temperature and humidity are 11, 16 and 29, respectively.  Interpret the results.  {Note that standardized estimates do not rely on original units.} 
+	If there are random intercept differences for subjects in the population, will the estimates in parts a and b have subject-specific or population-averaged interpretations {or both}?  Explain.
+
+	Name one advantage and one disadvantage of fitting the exacerbation discussed above using a GzLMM with Gaussian quadrature.  What estimation approach is used?
+
+Mixture models
+
+	Describe some hypothetical but realistic data that could be modeled using mixtures.  This could involve any type of mixture {discrete+continuous, discrete+discrete, etc.}  But mention something other than rainfall and cost data we discussed.
+
+	For the 0+continuous rainfall model described in class, how was the correlated data taken into account?
+
+	For the rainfall data, try fitting the data using a similar model, but try using a different distribution for the positive rainfall amounts.  {To obtain the rainfall data, just email me.}
+	How does the AIC compare to the model that uses the gamma distribution?
+	Compute the mean rainfalls {overall and by city} when considering both the 0 and positive amounts.
+
+
+Interpreting parameters in longitudinal models
+
+	Say that you have observational study data, with repeated measures on subjects over time.  The data involves monitoring subjects who have a particular disease.  You would like to estimate within-subject effects of time from diagnosis, but only the portion that does not include aging effects.  What terms would you include in the model to achieve this?
+
+	If you fit a longitudinal logistic regression model using GEE and you expect subject heterogeneity, then what type of interpretation do the beta estimates have {coefficients of predictors of interest}?
+
+Nonparametric and semi-parametric regression
+
+	Describe 2 approaches to defining a smoothing parameter for a local polynomial regression model.  {Review the slides and course notes to help you with this.}
+
+	Discuss the pro's and con's of using smoothing splines versus local polynomial regression for data collected over time.
+	In about 3 sentences, describes how local polynomial regression works, and also describe how it can be extended to longitudinal data, where estimation of individual subject outcome functions over time might be of interest.
+
+Ordinal regression models
+
+	What is the proportional odds assumption in ordinal logistic regression models?
+
+	What link is typically used for a GzLMM that has an ordinal outcome?
+
+	If you have an ordinal outcome variable with 4 levels, how many intercepts will the ordinal logistic regression model have?
+
+	If you are interested in fitting ordinal symptom data and answering some questions, I can send you a HW exercise.  Once you submit your answers I will 'grade' your question and also provide solutions.  However, any questions on the final quiz would be more at the conceptual level.
+
+	How do you interpret covariates in ordinal logistic regression models that using the cumulative logit link {proportional odds models}?
+
+Missing data
+
+	Suppose you have a longitudinal study or experiment where you notice that a percentage of subjects have dropped out over time.  In a short paragraph, explain how you would attempt to address the potential impact of missing data, considering the different possible missing data mechanisms.  {Note:  I know this one is pretty general; tell me what you know and I will post a paragraph you can review later.}
+
+MCMC / Bayesian
+
+	Describe a situation where you would apply MCMC methods.  In a few sentences describe how it is performed and what you get out of it.
+
+	Consider a GzLMM based on a Poisson distribution and having a normal cluster random effect and an additive normal error for overdispersion.
+	What needs to be done with this model to create a Bayesian version that can be estimated by MCMC?
+	What is the result of an MCMC algorithm, and how can it be used for estimation and inference about the model parameters?
+	What are some practical things that need to be specified when using MCMC?
+
+Ordinal logistic regression
+
+Background:  Children with asthma reported whether they had symptoms on a daily basis within a 2-year study period, from 2003-05 {our NJH asthma / air pollution study}.  The survey was collected on approximately 14 to 16 days per year, per child {see the data set to get the response patterns}.  Days where no collection occurred was not considered missing, since it was not the subject, but rather the design that dictated the intermittent data collection.  The question is whether asthma symptoms are related to air pollution levels.  [As an aside:  in the past we have not found self-reported asthma symptoms to be a sensitive measure of health, particularly as it relates to more subtle environmental exposures such as air pollution.  Of course, this is Denver; the exposure levels would not be so subtle in Beijing!  The most sensitive health measures we have found are rescue inhaler use and LTE4 {a biomarker of inflammation}.  Nevertheless, let's take a look at asthma symptoms and see what happens.]  So the synopsis of your analysis is to examine the relationship between air pollution and asthma symptoms.  This will be done in several steps, described below.  This is real data!  I have attached the data set on Canvas {see the 'asthma data' SAS data set}.
+
+	Develop an ordinal logistic regression model for asthma symptoms {Y} using pseudo-likelihood methods {RSPL}.  The levels of Y are as follows:  1=I did not cough or wheeze last night; 2=I coughed or wheezed a little, but I slept well; 3=I coughed or wheezed, and it work me once or woke me early; 4=I coughed or wheezed a lot and it woke me 2 or more times; 5=I coughed or wheezed a lot, and it kept me awake most of the night.  In this model, the predictors will be:  l1mmaxpm25 {lag 1 of yesterday's morning maximum PM2.5 concentration}, temperature, humidity, l1cold {lag 1 indicator of presence of cold}.  Just for consistency, use a random intercept for subject.  Some notes:  rspl did not converge, which is why I switched to rmpl; this represents a 'marginal' locus expansion rather than an expansion at the 'random effects=0' case; I tried other predictors such as date, year and date{year} but they did not seem to contribute much, so I dropped them.  For the outcome of asthma, use 'asthma{desc}' to get more intuitive estimates {as with application in the notes}; you cannot add serial correlation to the model when using the multinomial distribution.  Question:  how do air pollution effects compare with the common cold?  How can you manipulate the slope values so that you have an apples-to-apples comparison?
+
+	Determine P{Y=y} for y=1, 2, 3, 4 and 5.  Note that your answer will depend on levels of the covariates, so use average values of the 4 covariates.  To get the mean values of covariates, restrict the data so that it like data used in the OLR model.  For example, you can include  where asthma^=. and l1cold^=.; in the PROC MEANS statement; this should cover most of it.  What if you had used, say, the first quartile of each of the covariates?  How would your answer change, generally?  You can answer by just thinking about it or working it out mathematically…I am not as concerned about specific numerical values here.  But if you want you can just redo with 1st quartile values and then try to understand the patterns.
+
+	Compare the model in {1} to one where method=laplace is used.  Comment on differences in output.  What are the methodological differences between these approaches, in general?
+
+	Repeat the analysis but in this case, dichotomize the asthma variable into 1 versus 2-5.  For this analysis, run it the following ways:
+	Use GzLM with GEE.  What kind of interpretations do coefficients have here?
+	Use a GzLMM with a random intercept only.  What method do you choose here?  What type of interpretations do coefficients have here?
+	Use a GzLMM with a random intercept, plus see if adding serial correlation to the model is helpful.  What type of interpretations do coefficients have here?
+	Compare the results here with the OLR regression.  From what you can tell, are results consistent?  If not, any thoughts on what might be leading to differences?
+	Run the model in different ways than what I proposed.  Do you think you can find a better model?
+
+
