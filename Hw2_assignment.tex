@@ -1,0 +1,165 @@
+\documentclass[12pt]{article}
+
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,graphicx,bm,bbm,setspace,url,xcolor}
+\usepackage{enumitem}
+\usepackage{fancyvrb}
+\usepackage{xcolor}
+
+\DeclareMathOperator{\1nd}{\mathbbm{1}}
+\DeclareMathOperator{\E}{\mathbb{E}}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Cov}{Cov}
+\DeclareMathOperator{\logit}{logit}
+
+\title{BIOS 6612 Homework 2: Logistic Regression }
+%\author{John Rice}
+\date{}
+
+\begin{document}
+	\maketitle
+	
+	\begin{enumerate}
+		\item (\textbf{40 points}) The California Department of Corrections (CDC) has developed a ``classification score'' to predict whether a prisoner will commit misconduct violations during incarceration. A study of 3918 inmates was performed to examine whether this classification score, determined at sentencing, is associated with subsequent misconduct violations during the first year of incarceration.  Seven hundred thirty (730) of the 3918 inmates were incarcerated in maximum security prisons. In addition, the number of felony convictions or ``strikes'' was recorded for each prisoner. A ``1 Strike'' inmate is a prisoner who is serving time for a first felony conviction. A ``2 Strikes'' inmate is a prisoner who is serving time for a second felony and who was sentenced under a California law mandating sentence length enhancements. A ``3 Strikes'' inmate is a prisoner who is serving time for a third felony, in which case that same law mandated a life sentence.
+		
+		We will work with these variables:
+		\begin{itemize}[noitemsep]
+			\item \texttt{strikes}: number of felony convictions (``strikes'': 1, 2, or 3)
+			\begin{itemize}
+				\item \texttt{strikes2}: inmate had 2 strikes (0 = No, 1 = Yes) 
+				\item \texttt{strikes3}: inmate had 3 strikes (0 = No, 1 = Yes) 
+			\end{itemize}
+			\item \texttt{misconduct}: Committed a misconduct violation during the first year of incarceration (0 = No, 1 = Yes)
+			
+		\end{itemize}
+		
+		The following table provides the number of prisoners with misconduct violations during the first year of incarceration by the number of felony convictions or ``strikes'' against them.
+		
+		\begin{table}[!h]%
+			\centering
+			\begin{tabular}{|ccc|}
+				\hline
+				%Number of & \multicolumn{2}{c|}{Misconduct violation} \\%& Total \\
+				%\cline{2-3}
+				%strikes & Yes & No \\%& \\
+				\texttt{strikes} & \texttt{misconduct=1} & \texttt{misconduct=0} \\ 
+				\hline 
+				1 & 619 & 1797\\ %& 2416 \\
+				2 & 355 & 416 \\ %& 771 \\
+				3 & 162 & 569 \\ %& 731 \\
+				%\hline
+				%Total & 1136 & 2782 & 3918 \\
+				\hline
+			\end{tabular}
+		\end{table}
+		
+		\textbf{Answer the following questions, showing your calculations}; you may check your work using R.
+		
+		\begin{enumerate}
+			\item Calculate estimates of $\beta_0,\beta_1,\beta_2$ for the logistic regression model
+			\[
+			%\logit P(\mbox{misconduct violation}) = \beta_0 + \beta_1 \1nd(\mbox{strikes}=2) + \beta_2 \1nd(\mbox{strikes}=3)
+			\logit P(\mbox{misconduct violation}) = \beta_0 + \beta_1 \times \mathtt{strikes2} + \beta_2 \times \mathtt{strikes3}.
+			\]
+			This is Model 1. (\textbf{6 points})  
+			
+		
+			\item Calculate the log-likelihood for Model 1. (\textbf{3 points}) 
+			\item Calculate the log-likelihood for the null model (i.e., a model with only an intercept, $\beta_0$; this is Model 0). (\textbf{3 points})
+			\item Perform a likelihood ratio test comparing Model 1 with Model 0. Describe what this is testing: what is the null hypothesis, and what does it mean to reject the null hypothesis? (\textbf{6 points}) 
+			\item Consider a model for this data where \texttt{strikes} enters as a linear term rather than categorical; this is Model 2. This model fit produces the following R output:
+			\begin{verbatim}
+			Call:
+			glm(formula = cbind(y, n - y) ~ strikes, family = binomial, 
+			data = miscond)
+			
+			Deviance Residuals: 
+			1       2       3  
+			-2.903   9.647  -5.254  
+			
+			Coefficients:
+			Estimate Std. Error z value Pr(>|z|)    
+			(Intercept) -0.99461    0.07872 -12.635   <2e-16 ***
+			strikes      0.06270    0.04439   1.413    0.158    
+			---
+			Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+			
+			(Dispersion parameter for binomial family taken to be 1)
+			
+			Null deviance: 131.08  on 2  degrees of freedom
+			Residual deviance: 129.10  on 1  degrees of freedom
+			AIC: 154.84
+			
+			Number of Fisher Scoring iterations: 4
+			\end{verbatim}
+			Using Model 2, what is the predicted probability of a misconduct violation during the first year in prison for a prisoner with 1 strike? With 3 strikes? (\textbf{4 points}) 
+			
+			\item Using Model 2, what are the relative odds of a misconduct violation during the first year in prison for a prisoner with 3 strikes compared to a prisoner with 1 strike? Calculate a 95\% confidence interval for this estimate. (\textbf{4 points}) 
+			
+			\item Which model is better, Model 2 or Model 1? Justify your answer. (\textbf{4 points}) 
+			
+			
+		\end{enumerate}
+	
+		\item (\textbf{15 points}) The Genetic Epidemiology of COPD (COPDGene) Study is a multi-center case/control study designed to identify genetic factors associated with COPD and to characterize COPD-related phenotypes. The study recruited COPD cases and smoking controls ages 45 to 80 with at least 10 pack-years of smoking history. %An article detailing the COPDGene study design is included in the HW3 folder on Canvas (\texttt{COPDGene.pdf}).
+		
+		%\textbf{Question of interest}: You want to determine if BMI has a significant quadratic relationship with the log odds of COPD in the first 1,000 COPDGene subjects adjusting for age, gender, and current smoking status.
+		
+		The \texttt{copd.txt} file contains the COPD status (\texttt{copd=1} if the subject has COPD and \texttt{0} otherwise), age,
+		gender (\texttt{gender=0} for males and \texttt{1} for females), current smoking status (\texttt{smoker=1} if the subject is a current smoker
+		and \texttt{smoker=0} if the subject is a former smoker), mean centered BMI (labeled \texttt{BMI}), mean centered BMI squared
+		(labeled \texttt{BMIsquared}).
+		
+		\textbf{Answer the questions below and provide the relevant code and output in the appendix at the end of the assignment.} Do not include all of the output, only the output that pertains to the questions below. 
+		
+		\textit{Note}: All models should include age, gender, current smoking status, and BMI as covariates; you will need to evaluate the inclusion of BMI squared.
+		
+		\begin{enumerate}
+			\item Provide a Wald test statistic and $p$-value to determine whether COPD is significantly associated with BMI squared. (\textbf{5 points})
+			
+			\item Provide a likelihood ratio test statistic and $p$-value to determine whether COPD is significantly associated with BMI squared. (\textbf{5 points})
+			
+			\item Based on your answers to the previous questions, is there evidence that COPD has a quadratic relationship with BMI? (\textbf{3 points})
+			\item Why do you think the BMI variable was centered? (\textbf{2 points})
+			%\item Using the full model (that is, including BMI squared), calculate and interpret the estimated odds ratio for the effect of BMI on COPD for a patient with average BMI. Construct a 95\% confidence interval for this odds ratio using both the Wald and likelihood ratio procedures; are these confidence intervals similar to one another? Why or why not? 
+			%\textcolor{blue}{(\textbf{9 points}) For patients at average BMI, the coefficient of the quadratic term will be irrelevant because centered BMI squared is equal to 0, so the effect will be captured entirely by the coefficient of the linear term. This odds ratio is estimated as $\exp(-0.045133)=0.9558707$, so there is approximately a 5\% decrease in odds of COPD for each one-unit increase in BMI for someone with average BMI. This means that higher BMI has a slight protective effect with respect to COPD. Exponentiate the endpoints of the confidence intervals on the log odds scale: Wald CI is 0.9279670 - 0.9846134, LR CI is 0.9276001 - 0.9843026; these are similar because we have a large sample, so asymptotic theory holds.}
+		\end{enumerate}
+		
+		\item (\textbf{25 points}) Rickert et al. (\textit{Clinical Pediatrics} 1992; p. 205) designed a study to evaluate whether an HIV educational program makes sexually active adolescents more likely to obtain condoms ($Y=1$ if the adolescent obtained condoms and 0 otherwise). Adolescents were randomly assigned to different groups, according to whether education in the form of a lecture and video about the transmission of the HIV virus was provided. In a logistic regression model, factors observed to influence a teenager's probability of obtaining condoms were gender, socioeconomic status, lifetime number of partners, and the experimental condition (treatment variable). Results from a single model were summarized in a table such as the following. \textit{This table contains at least one mistake.}
+		
+		\begin{table}[!h]%
+			\centering
+			\begin{tabular}{|lll|}
+				\hline
+				Variable & OR & 95\% Wald CI \\
+				\hline
+				\texttt{group} (none [ref.] vs. education) & 4.04 & $(1.17,13.9)$ \\
+				\texttt{gender} (female [ref.] vs. male) & 1.38 & $(1.23,12.88)$ \\
+				\texttt{SES} (low [ref.] vs. high) & 5.82 & $(1.87,18.28)$ \\
+				Lifetime number of \texttt{partners} & 3.22 & $(1.08,11.31)$ \\
+				\hline
+			\end{tabular}
+		\end{table}
+		
+		\begin{enumerate}
+			\item Interpret the odds ratio and the corresponding confidence interval for group. (\textbf{5 points})
+			
+			\item Calculate the parameter estimates for the fitted logistic regression model. That is, find $\hat{\beta}_1,\hat{\beta}_2,\hat{\beta}_3,\hat{\beta}_4$ for the model
+			\[
+			\logit P(Y_i=1) =\beta_0 + \beta_1\mathtt{group}_i + \beta_2\mathtt{gender}_i + \beta_3\mathtt{SES}_i + \beta_4\mathtt{partners}_i.
+			\]
+			(\textbf{4 points}) 
+			
+			\item What additional piece of information would you need to obtain an estimate for the intercept $\beta_0$? (\textbf{2 points})
+		
+			\item Based on the corresponding Wald 95\% confidence interval for the log odds ratio, determine the standard error for the \texttt{group} effect, i.e., $\mathrm{SE}(\hat{\beta}_1)$. (\textbf{5 points})
+		
+			\item Argue that either the estimate of 1.38 for the odds ratio for gender or the corresponding confidence interval is incorrect. Show that, if the reported interval is correct, 1.38 is actually the log odds ratio and the estimated odds ratio approximately equals 3.97. (\textbf{7 points}) 
+			
+			
+		\end{enumerate}
+		
+	\end{enumerate}
+	
+\end{document}

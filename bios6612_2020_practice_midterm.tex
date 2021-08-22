@@ -1,0 +1,227 @@
+\documentclass[12pt]{article}
+
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,graphicx,bm,bbm,setspace,url}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+
+\setlist[enumerate,3]{label=(\roman*)}
+
+\fancypagestyle{empty}{%
+	\renewcommand{\headrulewidth}{0pt}%
+	\fancyhf{}%
+	\fancyhead[L]{\textbf{Name:}}
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+
+\rhead{Page \thepage \hspace{1pt} of \pageref{LastPage}}
+\lhead{Initials:}
+
+\DeclareMathOperator{\1nd}{\mathbbm{1}}
+\DeclareMathOperator{\E}{\mathbb{E}}
+\DeclareMathOperator{\Var}{Var}
+\DeclareMathOperator{\Cov}{Cov}
+
+\title{\Huge \textbf{BIOS 6612: Practice Midterm Examination}}
+%\author{John Rice}
+%\date{March 14, 2019}
+
+\renewcommand{\abstractname}{Instructions}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+
+\noindent
+\textbf{Academic integrity: \textit{All graduate educational programs and courses taught at the CSPH are conducted under the honor system.}} \\
+I understand that my participation in this examination and in all academic and professional activities as a UC Anschutz Medical Campus student is bound by the provisions of the UC AMC Honor Code. I understand that work on this exam and other assignments are to be done independently unless specific instruction to the contrary is provided. \\
+\\
+Signature: \hrulefill
+
+\section*{\centering Instructions}
+	\begin{itemize}
+		%\item This exam is worth a total of 100 points.
+		\item You may use a computers, \textbf{but no statistical model fitting procedures or internet access is permitted}.
+		\item The exam is open-book and open-notes.%, but you may use a \textbf{handwritten} formula sheet, \textbf{both sides of one page only}.
+		%\item Write your name at the top of this page and write your initials at the top of each subsequent page in the spaces indicated.
+		\item Attempt all questions and show your work for partial credit.
+		\item Write answers in the space provided below each question; if you need more space, use the back of the page, clearly indicating which question the continuing answer corresponds to.
+	\end{itemize}	
+
+
+
+
+\cleardoublepage
+
+\setcounter{page}{1} 
+\begin{enumerate}
+	\item (\textbf{15 points}) Answer the following questions.
+	\begin{enumerate}
+		\item Circle true or false: %Describe differences between the Wald, score, and likelihood ratio tests: what statistical principles is each based on,  what is the relationship between them, and in what situations are any of the three to be preferred? 
+		(\textbf{5 points}) \\
+		\begin{enumerate}
+			\item TRUE $\quad$ FALSE $\quad$ The Wald test is based on the distance between estimate and true parameter, measured in units of standard errors. \\
+			\item TRUE $\quad$ FALSE $\quad$ The Wald, score, and likelihood ratio tests are equivalent in small samples. \\
+			\item TRUE $\quad$ FALSE $\quad$ The likelihood ratio test is generally more powerful than the Wald test. \\
+			\item TRUE $\quad$ FALSE $\quad$ The likelihood ratio test may be used to compare non-nested models. \\
+			\item TRUE $\quad$ FALSE $\quad$ The score test is based on the derivative of the log-likelihood at the value of the parameter under the alternative hypothesis. \\
+		\end{enumerate}
+		%\textcolor{blue}{Wald test is based on distance between estimate and true parameter, and relies on the log-likelihood surface being roughly quadratic in a neighborhood of the MLE, so you should be more confident applying this in large samples (where the CLT operates reliably) than in small samples. Score test is based on the slope of the log-likelihood at the null parameter value and likelihood ratio test directly compares the likelihood of two models (which model is more likely given the observed data?); both of these work better in small samples. All three are equivalent in large samples under the null hypothesis, and have a limiting chi-square distribution. All of them can only be used to compare nested models.}
+
+\end{enumerate}
+		\vspace{3in}
+		
+	\cleardoublepage
+	
+	\item (\textbf{40 points}) An analysis of historical data on 1309 passengers in the \textit{Titanic} disaster of 1912 was conducted to determine the effects of several demographic variables on probability of passengers' survival. The data set consists of the following variables:
+	\begin{itemize}
+		\item \texttt{sex}, factor with two levels, \texttt{female} and \texttt{male}.
+		\item \texttt{age}, in years; missing for 263 of the passengers.
+		\item \texttt{passengerClass}, factor with three levels \texttt{1st}, \texttt{2nd}, or \texttt{3rd} class. 
+		\item \texttt{survived} (\textbf{outcome}), factor with two levels, \texttt{yes} if the passenger survived the sinking and \texttt{no} if not.
+	\end{itemize}
+	Below are some summary statistics for this data set.
+	\begin{verbatim}
+	      age              sex      passengerClass survived 
+	Min.   : 0.1667   female:466   1st:323        no :809  
+	1st Qu.:21.0000   male  :843   2nd:277        yes:500  
+	Median :28.0000                3rd:709                 
+	Mean   :29.8811                                        
+	3rd Qu.:39.0000                                        
+	Max.   :80.0000                                        
+	NA's   :263               
+	\end{verbatim}
+	We are interested in modeling the probability that \texttt{survived==yes}. Some critical values that may be useful as you answer the following questions are $\chi^2_{0.95,1}=3.8415,\chi^2_{0.95,2}= 5.9915, \chi^2_{0.95,3}=7.8147$.
+	
+	\begin{enumerate}
+		\item The table below gives the cross-tabulation for the outcome and passenger class.
+		\\
+		% latex table generated in R 3.5.0 by xtable 1.8-2 package
+		% Sun Feb 10 00:00:22 2019
+		\begin{table}[!h]
+			\centering
+			\begin{tabular}{rrr}
+				\hline
+				& \multicolumn{2}{c}{\texttt{survived}} \\
+			\texttt{passengerClass}	& \texttt{no} & \texttt{yes} \\ 
+				\hline
+				\texttt{1st} & 123 & 200 \\ 
+				\texttt{2nd} & 158 & 119 \\ 
+				\texttt{3rd} & 528 & 181 \\ 
+				\hline
+			\end{tabular}
+		\end{table}
+		\\
+		\begin{enumerate}
+			\item What is the probability of survival for all passengers? (\textbf{2 points})
+			\\
+			%\textcolor{blue}{We have to sum up the columns to get the probability of survival overall: $(200+119+181)/1309 = 0.381971 $. }
+			\vspace{2in}
+			
+			\item Compute the log-likelihood for the intercept-only logistic regression model. (\textbf{4 points})
+			\\
+			%\textcolor{blue}{Then the log-likelihood is
+				%$
+				%\log L = (123+158+528) \log(1-0.381971) + (200+119+181)\log(0.381971) = -870.5122
+				%$. }
+			\vspace{2in}
+			
+			\item Compute the log-likelihood for the logistic regression model treating \texttt{passengerClass} as a categorical covariate with three levels. (\textbf{6 points})
+			\\
+
+			
+			%\textcolor{blue}{First we need to calculate the probability of survival for each level of the covariate: we have $200/(123+200)=0.6192$ for 1st class, $119/(119+158)=0.4296$ for 2nd class, and $181/(181+528)=0.2553$ for 3rd class. Then the overall log-likelihood is $\log L = 200\log(0.6192)+123\log(1-0.6192) + 119\log(0.4296) + 158\log(1-0.4296) + 181\log(0.2553)+528\log(1-0.2553)=-806.6295$}
+			
+			\vspace{2in}
+						
+			\item Conduct a likelihood ratio test at the 5\% level of significance of the null hypothesis that passenger class is not associated with odds of survival. Be sure to state the reference distribution under the null. (\textbf{6 points}) 
+			\\
+			%\textcolor{blue}{The difference in number of parameters between the intercept-only and passenger class models is 2, so the reference distribution is chi-square with 2 degrees of freedom. The test statistic is $-2(-870.5122+806.6295)=127.7655>\chi^2_{0.95,2}= 5.9915$, so we reject the null hypothesis and conclude that passenger class is a significant predictor of survival.}
+			
+			\vspace{2in}
+						\cleardoublepage
+		\end{enumerate}
+		\item A logistic regression model including \texttt{sex}, \texttt{age}, and \texttt{passengerClass} is fitted to the data, resulting in the following maximum likelihood coefficient estimates:
+		% latex table generated in R 3.5.0 by xtable 1.8-2 package
+		% Sun Feb 10 00:37:45 2019
+		\begin{table}[!h]
+			\centering
+			\begin{tabular}{rrrr}
+				\hline
+				& Estimate & Std. Error & $z$ value \\ 
+				\hline
+				\texttt{(Intercept)} & 3.5221 & 0.3267 & 10.7807  \\ 
+				\texttt{sex} \texttt{male} (ref. \texttt{female}) & -2.4978 & 0.1660 & -15.0439  \\ 
+				\texttt{age} & -0.0344 & 0.0063 & -5.4325  \\ 
+				\texttt{passengerClass} \texttt{2nd} (ref. \texttt{1st}) & -1.2806 & 0.2255 & -5.6778  \\ 
+				\texttt{passengerClass} \texttt{3rd} (ref. \texttt{1st}) & -2.2897 & 0.2258 & -10.1401  \\ 
+				\hline
+			\end{tabular}
+		\end{table}
+		\begin{enumerate}
+			\item Provide an interpretation for the intercept in this model, or explain why you do not think the intercept is interpretable. (\textbf{4 points})
+			\\
+			%\textcolor{blue}{Although age is not centered in this model, there is at least one passenger with age close to 0. Thus, the intercept can be interpreted as the log odds of survival for a newborn female in first class.}
+			
+			\vspace{2in}
+			
+			\item Calculate the estimated odds ratio for the association between survival and passenger sex; provide an interpretation for the estimate. Construct a 95\% confidence interval for this odds ratio. (\textbf{6 points})
+			\\
+			%\textcolor{blue}{The estimated odds ratio is $\exp(-2.4978)=0.0823 $. This means that the odds of survival for male passengers were approximately 91\% lower than for female passengers, adjusting for age and passenger class. A 95\% confidence interval for this odds ratio is $\exp(-2.4978\pm 1.9600(0.1660))=(0.0594, 0.1139 )$.}
+			\vspace{2in}
+			\item Calculate the estimated odds ratio for the association between survival and passenger age; provide an interpretation for the estimate. Construct a 95\% confidence interval for this odds ratio. (\textbf{6 points})
+			\\
+			%\textcolor{blue}{The estimated odds ratio is $\exp(-0.0344)=0.9662 $. This means that the odds of survival decreases by approximately 3.3\% for each additional year of age, adjusting for sex and passenger class. A 95\% confidence interval for this odds ratio is $\exp(-0.0344\pm 1.9600(0.0063))=(0.9543, 0.9783  )$.}
+			
+			\vspace{2in}
+		\end{enumerate}
+		\item A second model is fitted to the data, adding an interaction term between \texttt{age} and \texttt{sex}; these two main effects remain in the model as does \texttt{passengerClass}. The following estimates and Wald $p$-values are obtained: 
+		\\
+		%The coefficient estimates from this new model for \texttt{sex}, \texttt{age}, and \texttt{sex*age} are  $-1.0298,     -0.0041    , -0.0529 $, respectively; the Wald $p$-values for these coefficients are $0.0041  ,    0.6660 ,     0.0000 $, respectively. 
+		% latex table generated in R 3.5.0 by xtable 1.8-2 package
+		% Sun Feb 10 01:40:46 2019
+		\begin{table}[!h]
+			\centering
+			\begin{tabular}{rrr}
+				\hline
+				& Estimate & Pr($>$$|$z$|$) \\ 
+				\hline
+				\texttt{sex} \texttt{male} (ref. \texttt{female}) & -1.0298 & 0.0041 \\ 
+				\texttt{age} & -0.0041 & 0.6660 \\ 
+				\texttt{sex*age} & -0.0529 & 0.0000 \\ 
+				\hline
+			\end{tabular}
+		\end{table}
+		\\
+		\begin{enumerate}
+			\item Is there a significant interaction between age and sex with respect to odds of survival? Provide a $p$-value to support your conclusion. (\textbf{2 points})\\
+			%\textcolor{blue}{There is a significant interaction between age and sex, $p<0.0001$ from the last line of the table.}
+			\item Interpret the effect of sex on odds of survival, given that age and the sex $\times$ age interaction are included in the model. (\textbf{4 points})\\
+			%\textcolor{blue}{The coefficient estimate for sex is $-1.0298$, so the odds ratio for survival of a male passenger at age 0 compared with a female passenger at age 0 is $\exp(-1.0298)=0.3571$. If we want to compare the survival odds between a male and female passenger at specific ages, then we need to look at the odds ratio
+			%\begin{align*}
+			%OR &= \frac{\exp(\cdots + \mathtt{male}\beta_1 + \mathtt{age}\beta_2+\mathtt{male}\cdot\mathtt{age}\beta_3)}{\exp(\cdots + \mathtt{female}\beta_1 + \mathtt{age}\beta_2+\mathtt{female}\cdot\mathtt{age}\beta_3)} \\
+			%&= \frac{\exp(\cdots + \beta_1 + \mathtt{age}\beta_2+\cdot\mathtt{age}\beta_3)}{\exp(\cdots + 0\cdot\beta_1 + \mathtt{age}\beta_2+0\cdot\mathtt{age}\beta_3)} \\
+			%&= \exp(\beta_1 + \mathtt{age}\beta_3)
+			%\end{align*}%For each additional year of age, this odds ratio decreases by a factor of $1-\exp(-0.0529)=0.0515$, so that, 
+			%This quantity is estimated from our data as $\exp(-1.0298-\mathtt{age}0.0529)$, meaning that, for example, the odds ratio comparing survival between males and females at age 10 is $\exp(-1.0298-10\cdot 0.0529)=0.2104$ and at age 30 it is $\exp(-1.0298-30\cdot 0.0529)=0.0730$. This means that there is a larger difference in odds of survival between older males and females than between younger males and females.
+			%}
+		\end{enumerate}
+		
+			\vspace{2in}
+			%\item Interpret the effect of age on odds of survival, given that sex is included in the model. (\textbf{6 points})\\
+			% so we need to interpret the effect of age in each level of sex separately. The odds ratio for age among female passengers is just $\exp(-0.0041 )=0.9959$, so for each additional year of age in a female passenger, the odds of survival decreases by less than 1\%. For males, the odds ratio is $\exp(-0.0041-0.0529)=0.9446$, so for male passengers, the odds of survival decreases by approximately 5\% for each additional year of age.}
+			
+			\vspace{2in}
+	\end{enumerate}
+		\cleardoublepage
+		\item (\textbf{5 points}) Suppose you have used maximum likelihood estimation to estimate a parameter $\hat{\theta}$ that you know to be asymptotically normally distributed with mean $\theta$ and variance $\sigma^2_\theta$. Derive the asymptotic distribution of $\log \hat{\theta}$. %(Hint: use the delta method.) 
+		\\
+		%\textcolor{blue}{This is a monotone transformation, so $\log \hat{\theta}$ is also asymptotically normal with mean $\log \theta$. The variance (from the delta method) is $\left(\frac{d}{d\theta}\log\theta\right)^2 \sigma_\theta^2=\sigma^2_\theta/\theta^2$.}
+\end{enumerate}
+
+\end{document}
