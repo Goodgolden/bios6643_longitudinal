@@ -113,6 +113,7 @@ e0 <- rnorm(100, mean = 0, sd = 0.46)
 # e2 <- arima.sim(list(order = c(1, 0, 0), ar = .50), n = 100)
 # e3 <- arima.sim(list(order = c(1, 0, 0), ar = .75), n = 100)
 # e4 <- arima.sim(list(order = c(1, 0, 0), ar = .99), n = 100)
+
 ## use the definition ----------------------------------------
 e1 <- e2 <- e3 <- e4 <- array(rnorm(1, mean = 0, sd = 0.46))
 for (i in seq_along(1:99)) {

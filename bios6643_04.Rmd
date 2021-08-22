@@ -11,10 +11,8 @@ output:
     slide_level: 2
     toc: true
     keep_tex: true
-    latex_engine: xelatex
+    latex_engine: pdflatex
     dev: cairo_pdf
-    fig_caption: no
-    fig_crop: no
 fontsize: 9pt
 make149: yes
 header-includes:
@@ -32,9 +30,14 @@ knitr::opts_chunk$set(fig.path = 'figs_L4/', cache.path = 'cache/')
 
 ## Background 
 
--	One of the simplest ways to account for correlated data in a linear mixed model is to add a random intercept term.  For example, adding a random intercept term for subjects will induce correlation between measures within subjects, even when repeated measures are not accounted for in the error covariance matrix.
+-	One of the simplest ways to account for correlated data in a linear mixed model is to add a random intercept term.  
 
--	The covariance structure (compound symmetric) is simplistic and often not realistic for longitudinal data (covariance between any pair of responses over time is the same regardless of the pair of time points being considered), but is far better than not accounting for correlation at all.  When the random intercept term is for, say, schools, then the covariance structure might be more realistic.
+    - For example, adding a random intercept term for subjects will induce correlation between measures within subjects
+    - even when repeated measures are not accounted for in the error covariance matrix.
+
+-	The covariance structure (compound symmetric) is simplistic and often not realistic for longitudinal data (covariance between any pair of responses over time is the same regardless of the pair of time points being considered), but is far better than not accounting for correlation at all. 
+
+- When the random intercept term is for, say, schools, then the covariance structure might be more realistic.
 
 
 ## 
