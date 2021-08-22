@@ -1,0 +1,189 @@
+---
+title: "L6.3: Conditional Logistic Regression"
+subtitle: "BIOS 6612"
+author: "Julia Wrobel"
+date: March 1 , 2021
+header-includes:
+   - \usepackage{bm}
+output:
+  powerpoint_presentation:
+    reference_doc: ../cu_style.pptx
+---
+
+```{r, echo= FALSE, include = FALSE}
+library(tidyverse)
+
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 7,
+  fig.height = 5
+)
+
+theme_set(theme_bw() + theme(legend.position = "bottom"))
+```
+
+## Overview
+
+Today, we cover:
+
+* Likelihood derivation for conditional logistic regression
+
+<br>
+
+Optional readings:
+
+* Agresti: 7.3, 11.2
+
+
+## Modeling data from matched studies 
+
+The model for matched data is 
+
+<br>
+
+$$\text{logit} \left\{ p_k(X_{ik}) \right\} = \alpha_k + \beta_1 X_{ik1} + \beta_2X_{ik2} + \ldots + \beta_p x_{ikp}$$
+
+* $p_k(X_{ik})$ represent the probability that the *i*th person in the *k*th matched set has disease
+* $k \in (1, 2, 3, \ldots K)$ indicates the current matched set
+* $i \in (0, 1, 2, \ldots M+1)$ indicates individual in the current matched set
+  * $i = 0$ is the case
+* $\boldsymbol{X}_{ik}$ is vector of covariates for the *i*th person in the *k*th matched set
+  * $\boldsymbol{X}_{ik} = X_{ik1}, X_{ik2}, \ldots, X_{ikp}$
+
+
+## Constructing the conditional likelihood
+
+How do we construct a likelihood function that allows us to find estimates for the parameters of interest, $\beta$?
+
+<br>
+
+1. Find the conditional likelihood for the $k$th stratum/matched set
+1. Combine likelihoods to obtain likelihood over all strata
+
+
+## Constructing the conditional likelihood
+
+We need the probability that the individual in the study whose vector of covariates is $\boldsymbol{X}_{0k}$ is actually the case, conditional on the observed covariate values $\boldsymbol{X}_{ik}, i = 0, 1, \ldots, M$ for all individuals in the $k$th matched set. Define:
+
+* $P(\boldsymbol{X}_{ik}|Y=1)$ be the probability that a person with disease in the $k$th matched set has covariate vector $\boldsymbol{X}_{ik}$
+* $P(\boldsymbol{X}_{ik}|Y = 0)$ be the probability that a person without disease in the $k$th matched set has covariate vector $\boldsymbol{X}_{ik}$
+  
+  
+<br>
+
+Then the joint probability that $\boldsymbol{X}_{0k}$ corresponds to the case and $\boldsymbol{X}_{ik}, i = 1, \ldots, M$ to the controls is 
+
+$$P(\boldsymbol{X}_{0k}|Y = 1)  \prod_{i = 1}^M P(\boldsymbol{X}_{ik}|Y = 0)$$
+
+## Constructing the conditional likelihood
+
+The probability that one of the $M + 1$ subjects in the $k$th matched set is the case and the remainder are controls is the union of the probabilities that:
+
+* Person with $\boldsymbol{X}_{0k}$ has disease and the rest are disease-free
+* Person with $\boldsymbol{X}_{1k}$ has disease and the rest are disease-free
+* ...
+* Person with $\boldsymbol{X}_{Mk}$ has disease and the rest are disease free
+
+This is: 
+
+$$
+P(\boldsymbol{X}_{0k}| Y = 1) \prod_{i = 1}^M P(\boldsymbol{X}_{ik}|Y = 0) + P(\boldsymbol{X}_{1k}| Y = 1) \prod_{i \ne 1} P(\boldsymbol{X}_{ik}|Y = 0) + \ldots + P(\boldsymbol{X}_{Mk}| Y = 1) \prod_{i \ne M 1} P(\boldsymbol{X}_{ik}|Y = 0)
+$$
+
+Which can also be expressed as 
+
+$$
+\sum_{l = 0}^M P(\boldsymbol{X}_{lk}| Y = 1) \prod_{r \ne i}^M P(\boldsymbol{X}_{rk}|Y = 0)
+$$
+
+
+
+
+## Constructing the conditional likelihood
+
+Then, the conditional probability of interest is the ratio
+
+<br>
+
+$$
+L_k = \frac{P(\boldsymbol{X}_{0k}|Y = 1)  \prod_{i = 1}^M P(\boldsymbol{X}_{ik}|Y = 0)}{\sum_{l = 0}^M P(\boldsymbol{X}_{lk}| Y = 1) \prod_{r \ne i}^M P(\boldsymbol{X}_{rk}|Y = 0)}.
+$$
+
+
+
+This is the conditional likelihood for the $k$th stratum/matched set.
+
+
+## Constructing the conditional likelihood
+
+
+We can use Bayes' Theorem to substitute:
+
+$P(\boldsymbol{X}_{ik}| Y=1)$ with $\frac{P(Y=1 |\boldsymbol{X}_{ik})P(\boldsymbol{X}_{ik})}{P(Y = 1)}$ and $P(\boldsymbol{X}_{ik}| Y=0)$ with $\frac{P(Y=0 |\boldsymbol{X}_{ik})P(\boldsymbol{X}_{ik})}{P(Y = 0)}$
+
+So the likelihood becomes
+
+
+
+$$
+L_k = \frac{\frac{P(Y=1 |\boldsymbol{X}_{0k})P(\boldsymbol{X}_{0k})}{P(Y = 1)}  \prod_{i = 1}^M \frac{P(Y=0 |\boldsymbol{X}_{ik})P(\boldsymbol{X}_{ik})}{P(Y = 0)}}{\sum_{l = 0}^M \frac{P(Y=1 |\boldsymbol{X}_{lk})P(\boldsymbol{X}_{lk})}{P(Y = 1)} \prod_{r \ne i}^M \frac{P(Y=0 |\boldsymbol{X}_{rk})P(\boldsymbol{X}_{rk})}{P(Y = 0)}}.
+$$
+
+
+
+## Constructing the conditional likelihood
+
+The factor $\frac{\prod_i^MP(X_{ik})}{P(Y = 1)P(Y = 0)^M}$ appears in both the numerator and denominator and will cancel out, so the the likelihood reduces to
+
+<br>
+
+$$
+L_k = \frac{P(Y=1 |\boldsymbol{X}_{0k}) \prod_{i = 1}^M P(Y=0 |\boldsymbol{X}_{ik})}{\sum_{l = 0}^M P(Y=1 |\boldsymbol{X}_{lk}) \prod_{r \ne i}^M P(Y=0 |\boldsymbol{X}_{rk})}
+$$
+
+
+
+## Constructing the conditional likelihood in terms of Betas
+
+
+We have a logistic model for disease in the $i$th person in the $k$th stratum:
+
+$$\text{logit}P(Y_i = 1 | \boldsymbol{X}_{ik}) = \alpha_k + \beta_1 X_{ik1} + \beta_2 X_{ik2} + \ldots + \beta_p X_{ikp}$$
+
+
+Now we can substitute
+
+
+
+$P(Y_i = 1 | \boldsymbol{X}_{ik}) = \frac{e^{\alpha_k + \boldsymbol{X}_{ik}\boldsymbol{\beta}}}{1 + e^{\alpha_k + \boldsymbol{X}_{ik}\boldsymbol{\beta}}}$ and $P(Y_i = 0 | \boldsymbol{X}_{ik}) = \frac{1}{1 +e^{\alpha_k + \boldsymbol{X}_{ik}\boldsymbol{\beta}} }$
+
+
+
+## Constructing the conditional likelihood in terms of Betas
+
+I'm skipping a couple algebraic steps, but you end up with a stratum specific likelihood where the intercept terms cancel. The intercept terms are said to have been "conditioned out". Effects of matching variables cannot be estimated!
+
+$$L_k(\beta) = \frac{ e^{\alpha_k + \boldsymbol{X}_{ik}\boldsymbol{\beta}} }{\sum_{l = 0}^M e^{\alpha_k + \boldsymbol{X}_{ikl}\boldsymbol{\beta}}}$$
+
+
+Overall likelihood is the product of the likelihood for each stratum:
+
+$$L(\beta) = \prod_{k = 1}^K L_k(\beta)$$
+
+
+## Conditional likelihood for matched case-control data
+
+Since we can't estimate the intercepts, disease probabilities $p(\boldsymbol{X}_{ik})$ are not estimable either.
+
+* We can still include interaction terms between matching variables and exposure factors to determine whether the effect of the exposure variable is consistent across different values of the matching variable
+* The log odds ratios are independent of the intercepts, so they CAN be estimated
+
+<br>
+
+This conditional likelihood behaves much like an ordinary likelihood!
+
+* Likelihood is maximized to get estimates of the coefficients
+* Can use likelihood ratio tests to compare nested models and conduct hypothesis tests for parameter estimates
+

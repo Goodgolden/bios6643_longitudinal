@@ -1,0 +1,169 @@
+---
+title: "L6.1: Case-Control Studies"
+subtitle: "BIOS 6612"
+author: "Julia Wrobel"
+date: March 1 , 2021
+header-includes:
+   - \usepackage{bm}
+output:
+  powerpoint_presentation:
+    reference_doc: ../cu_style.pptx
+---
+
+```{r, echo= FALSE, include = FALSE}
+library(tidyverse)
+library(broom)
+
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  fig.width = 7,
+  fig.height = 5
+)
+
+theme_set(theme_bw() + theme(legend.position = "bottom"))
+```
+
+## Overview
+
+Today, we cover:
+
+* Logistic regression model for case-control studies
+
+<br>
+
+Optional readings:
+
+* Agresti: 2.1.7-2.2.7
+
+## Basics of epidemiological study design
+
+Epidemiological studies aim to investigate the causes, or *etiology* of diseases/conditions. Often combinations of different circumstances combine to lead to disease.
+
+<br>
+
+* These are termed *exposures*, or *risk factors*
+
+
+<br>
+
+To understand the relationship(s) between exposure(s) and disease, two basic designs are commonly used:
+
+<br> 
+
+* cohort study
+* case-control study
+
+
+## Prospective cohort studies
+
+To determine if there is an association between certain exposure factors and a particular disease, a sample is selected consisting of individuals free of disease.
+
+<br>
+
+* Individuals are selected according to exposure factors of interest
+
+<br>
+
+* Group is followed for a given time period  and classified according to whether or not a disease has developed
+
+## Case-control studies
+
+In this study design, comparisons are made between individuals who have a disease of interest (*cases*) and those who do not (*controls*).
+
+<br>
+
+* Cases are sampled from a population of individuals with the condition
+* Controls are selected who do not have this condition
+* Information about risk factors is then obtained retrospectively for all subjects
+
+<br>
+
+Because ratio of cases to controls is fixed, we cannot determine population level risk of disease from this study design.
+
+## Advantages and disadvantages of case-control studies
+
+Advantages
+
+* Much quicker to carry out than cohort studies, since people with disease are selected from the outset and risk factor assessment is done retrospectively
+* Cheaper than prospective cohort studies
+
+
+Disadvantages
+
+* Can be recall bias about exposure(s) of interest for exposures that rely on subject's memory to be accurate
+* Case-control is restricted to one disease, but cohort studies can collect info on multiple diseases
+* *risk*, the probability of a disease occurring given a set of exposures can be estimated from a cohort study but not a case-control study!
+
+## Measures of Association
+
+More specifically, below are the main measures of association between disease and exposure(s) of interest.
+
+* Risk
+* Risk Difference (RD): Risk of disease for those exposed - risk of disease for those unexposed
+* Relative Risk/ Risk Ratio (RR): Risk of disease for those exposed / risk of disease for those unexposed
+* Odds Ratio (OR): Odds of disease for those exposed / odds of disease for those unexposed
+
+<br>
+
+Risk, RD, RR, and OR can all be estimated from a cohort study, but case-control studies can only estimate the OR!!
+
+## Logistic Regression in case-control studies
+
+In case-control studies, cases are sampled from a population of individuals *with* disease of interest, while controls are sampled from a population of individuals *without* disease 
+
+<br>
+
+* If we treat case or control status as a binary response variable, then the logistic regression model can be used to analyze results from case-control studies
+
+<br>
+
+* We can't use the fitted model to estimate probability of disease or relative risk
+  * This is because we selected the proportion of disease vs. no disease
+  * We can use the model  to examine the OR and OR adjusted for other confounding factors
+
+
+
+## Example: Cervical Cancer and HPV Vaccine
+
+A case-control study designed to investigate whether there is an association between occurence of cervical cancer and whether or not women received the HPV vaccine *Guardasil*.
+
+
+<br>
+
+* cases: 47 women histologic diagnosis of invasive cervical cancer at CU Anschutz between 2004 and 2006
+* controls: 173 healthy women who attended the hospital for family planning purposes during the same time period
+* Questionnaire was administered to learn whether patients received the HPV vaccine
+
+```{r}
+cervical =  tibble(
+  vaccinated = c(0, 1),
+  cases = c(36, 11),
+  controls = c(78,95))
+cervical %>% knitr::kable()
+```
+
+
+
+## Example: Cervical Cancer and HPV Vaccine
+
+
+Same interpretation of OR, hypothesis testing, and model checking as before!
+
+```{r, echo = TRUE}
+
+cervical = cervical %>% mutate(vaccinated = factor(vaccinated, levels = 1:0))
+cervical_mod = glm(cbind(cases, controls) ~ vaccinated, data = cervical, family = binomial("logit"))
+summary(cervical_mod)$coefficients
+```
+
+
+## Example: Cervical Cancer and HPV Vaccine
+
+```{r, echo = TRUE}
+coef(cervical_mod)
+exp(coef(cervical_mod))
+exp(confint.default(cervical_mod)) # gives confidence interval around OR based on Wald statistic
+```
+
