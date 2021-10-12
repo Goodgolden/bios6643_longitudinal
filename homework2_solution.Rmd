@@ -25,7 +25,7 @@ In order to do this, recall $PC1 = a Y_1 + b Y_2$, where a and b are chosen to m
 
 Note:  in terms of $Y_2$ versus $Y_1$, the 'slope' of the $PC1$ axis is simply $b/a$; to create a line to graph for $PC1$, you can have it go through the joint sample mean of $Y_1$ and $Y_2$.  This exercise helps demonstrate the 'regression' principle in a regression line.
 
-\textcolor{blue}{A few comments: First, in terms of the graph, $PC1$ is an axis rather than a line, just like $Y_1$ and $Y_2$. This is why we need to anchor it through something; it makes sense to have it go through the joint sample means of $Y_1$ and $Y_2$, just like the regression line does. This will allows us to determine an intercept for $PC1$ in addition to the slope, which we already know. See the code in the Appendix that walks through the calculations. Note in the graph below I added the 95% confidence ellipse for the joint mean (like a confidence interval but generalizing to 2 dimensions). You only need to plot the 2 lines on the scatterplot for full credit (blue=PC1 'line', red=regression line). In this case there is not much 'regression’ in the regression line.
+\textcolor{blue}{A few comments: First, in terms of the graph, $PC1$ is an axis rather than a line, just like $Y_1$ and $Y_2$. This is why we need to anchor it through something; it makes sense to have it go through the joint sample means of $Y_1$ and $Y_2$, just like the regression line does. This will allows us to determine an intercept for $PC1$ in addition to the slope, which we already know. **See the code below** that walks through the calculations. Note in the graph below I added the 95% confidence ellipse for the joint mean (like a confidence interval but generalizing to 2 dimensions). You only need to plot the 2 lines on the scatterplot for full credit (blue=PC1 'line', red=regression line). In this case there is not much 'regression’ in the regression line.
 Note that the slope of the regression line is $(SD_{post} / SD_{pre}) \times r$ and the slope of the $PC1$ line is $SD_{post} / SD_{pre}$; since $r$ is close to 1, we do not see much difference between the two.}
 
 ```{r echo=TRUE, fig.align="center", fig.height=8, fig.width=8, message=FALSE, warning=FALSE, out.width="80%"}
@@ -103,7 +103,10 @@ Derive $Var[\pmb {\hat \beta}]$ in a full-rank linear mixed model, given the alg
 NOTE:  there are two types of variance, model-based and empirical (or sandwich estimator `r emo::ji("sandwich")`).  The difference is whether the middle $\pmb V$ is determined via the model or using squared residual quantities; derive _the model-based form_.  To answer this question, work with the 'complete data' form of $\pmb {\hat \beta}$.
 
 
-\textcolor{blue}{The ML estimator has form $\pmb {\hat \beta} = (\pmb X^t \pmb V^{-1}\pmb X)^-\pmb X^t\pmb V^-\pmb Y$, which is a linear form of $\pmb Y$. Since we are dealing with a model with full rank $\pmb X$, then $\pmb {\hat \beta} = (\pmb X^t \pmb V^{-1} \pmb X)^{-1}\pmb X^t \pmb V^{-1}\pmb Y$. The linear form result says $Var[\pmb{AY}] = \pmb A Var[\pmb Y] \pmb A^t$; so let $\pmb A = (\pmb X^t \pmb V^{-1} \pmb X)^{-1} \pmb X^t \pmb V^{-1}$ and $$\begin{aligned}
+\textcolor{blue}{The ML estimator has form $\pmb {\hat \beta} = (\pmb X^t \pmb V^{-1}\pmb X)^-\pmb X^t\pmb V^{-1}\pmb Y$, which is a linear form of $\pmb Y$. Since we are dealing with a model with full rank $\pmb X$, then $\pmb {\hat \beta} = (\pmb X^t \pmb V^{-1} \pmb X)^{-1}\pmb X^t \pmb V^{-1}\pmb Y$. The linear form result says $Var[\pmb{AY}] = \pmb A Var[\pmb Y] \pmb A^t$; so let $\pmb A = (\pmb X^t \pmb V^{-1} \pmb X)^{-1} \pmb X^t \pmb V^{-1}$ and 
+
+$$
+\begin{aligned}
 Var[\pmb {\hat \beta}] 
 &= \pmb A Var[\pmb Y] \pmb A^t\\
 &= \Big[(\pmb X^t \pmb V^{-1} \pmb X)^{-1} \pmb X^t \pmb V^{-1} \Big] Var[\pmb Y] \Big[(\pmb X^t \pmb V^{-1} \pmb X)^{-1} \pmb X^t \pmb V^{-1} \Big]^t\\
@@ -112,7 +115,11 @@ Var[\pmb {\hat \beta}]
 &= (\pmb X^t \pmb V^{-1} \pmb X)^{-1} \pmb X^t \pmb V^{-1} \pmb V \pmb V^{-1} \pmb X  \Big[(\pmb X^t \pmb V^{-1} \pmb X)^{-1} \Big]^t\\
 &= (\pmb X^t \pmb V^{-1} \pmb X)^{-1} \pmb X^t \pmb V^{-1} \pmb X  (\pmb X^t \pmb V^{-1} \pmb X)^{-1} \\
 &= (\pmb X^t \pmb V^{-1} \pmb X)^{-1} 
-\end{aligned}$$. Another good practice question is to derive $Var[\pmb {L\hat \beta}]$ for an estimable $\pmb {L\beta}$ , for a less-than-full-rank model.}
+\end{aligned}
+$$
+
+
+Another good practice question is to derive $Var[\pmb {L\hat \beta}]$ for an estimable $\pmb {L\beta}$ , for a less-than-full-rank model.}
 
 
 

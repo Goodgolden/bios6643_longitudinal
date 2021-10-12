@@ -30,8 +30,9 @@ a.  **Change-score model**: Let $Y_{i1}$ and $Y_{i2}$ denote the pre and post ch
 knitr::include_graphics("homework/1_1.png")
 ```
 
+\textcolor{blue}{The change score model for pre and post cholesterol levels shows an average decrease in post cholesterol level of $19.54 mcg/dL$ $(95\% CI: -26.6, -12.4;\ p<0.0001)$.}
 
-\textcolor{blue}{The $R^2$ is 0. You might think this means that the model is bad, but remember that the $R^2$ is a measure of model improvement over the model with the simple intercept. Since this model is in fact the simple intercept model, there cannot be any improvement over it. The estimate of -19.54 shows that the average drop in cholesterol was almost 20 mcg/dl, which was very significant. Since we only have an intercept in the model, note that cholesterol change levels are predicted to be the same for all subjects. However, this is not to say that a necessary assumption of the data is that cholesterol changes are the same. Remember that for a paired t-test, we assume that changes scores are normally distributed. Nevertheless, with this simple model we are not able to model change scores as a function of baseline score, which is important, as the following parts will demonstrate.}
+\textcolor{purple}{The $R^2$ is 0. You might think this means that the model is bad, but remember that the $R^2$ is a measure of model improvement over the model with the simple intercept. Since this model is in fact the simple intercept model, there cannot be any improvement over it. Since we only have an intercept in the model, note that cholesterol change levels are predicted to be the same for all subjects. However, this is not to say that a necessary assumption of the data is that cholesterol changes are the same. Remember that for a paired t-test, we assume that changes scores are normally distributed. Nevertheless, with this simple model we are not able to model change scores as a function of baseline score, which is important, as the following parts will demonstrate.}
 
 b.  In the output, look at the test for the intercept. What simple test yields the same results?
 
@@ -43,7 +44,10 @@ c.  **Baseline-as-covariate model**: Now perform a linear regression for the pos
 knitr::include_graphics("homework/1_2.png")
 ```
 
-\textcolor{blue}{We are performing a simple linear regression of 'after' score on 'before' score. Since the slope is different than 1, there is some evidence that the cholesterol scales 'before' and 'after' are not commensurate. However, the test above compares the slope with 0 and not 1 (we will get back to this issue momentarily). This fitted model demonstrates not only that subjects lowered their cholesterol with this diet (with the range of cholesterol tested), but that those with higher cholesterol dropped more. For example, a subject with a 'before' cholesterol of 200 has an expected 'after' cholesterol of $37.16+200(0.698) = 176.76 mcg/dl$, a drop of over 23 points, while a subject starting at 150 is expected to drop to 141.86 mcg/dl, less than 10 points. Now we have a way of predicting post-diet cholesterol that takes into account pre-diet starting points.}
+
+\textcolor{blue}{From the baseline-as-covariate model, we see that on average for every unit increase in pre-cholesterol level the post-cholesterol level increases by $0.70 mcg/dL$ $(95\% CI: 0.52, 0.88; p < 0.001)$. The intercept for this model, denotes the average post-cholesterol value when the pre-cholesterol values is 0, which in this situation does not have a real-world interpretation, it is possible to mean-center the pre-cholesterol values so that the intercept has an interpretation as the average post-cholesterol value when the pre- cholesterol value is at the mean.}
+
+\textcolor{purple}{We are performing a simple linear regression of 'after' score on 'before' score. Since the slope is different than 1, there is some evidence that the cholesterol scales 'before' and 'after' are not commensurate. However, the test above compares the slope with 0 and not 1 (we will get back to this issue momentarily). This fitted model demonstrates not only that subjects lowered their cholesterol with this diet (with the range of cholesterol tested), but that those with higher cholesterol dropped more. For example, a subject with a 'before' cholesterol of 200 has an expected 'after' cholesterol of $37.16+200(0.698) = 176.76 mcg/dl$, a drop of over 23 points, while a subject starting at 150 is expected to drop to 141.86 mcg/dl, less than 10 points. Now we have a way of predicting post-diet cholesterol that takes into account pre-diet starting points.}
 
 d.  Compare the change-score (CS) and baseline-as-covariate (BAC) models. What are pro's and con's of each? Also construct residual plots (residual vs. before) to help answer.
 
@@ -52,6 +56,8 @@ knitr::include_graphics("homework/1_3.png")
 ```
 
 \textcolor{blue}{The residual plot for the CS model has an obvious pattern demonstrating lack of fit; the BAC model has no such pattern.}
+
+\textcolor{purple}{One disadvantage of CS model is that it is not able to model the effect of baseline value. While BAC model estimates the value of slope of baseline value, CS model simply assumes the slope to be one. One disadvantage of BAC model compared to CS it that it does not pair data. The estimated slope in BAC model is based on integrated effect of baseline value across all subjects.In addition, BAC model estimates one more parameter than CS, thus has smaller power. The CS model may be more powerful when well-specified (as a special case of BAC), while the BAC model is more flexible and can capture a wider range of relationships between startingand ending cholesterol levels.}
 
 e.  **Hybrid model**: Consider the model of change score ($d_i$) using baseline cholesterol as a covariate.
 
@@ -76,7 +82,10 @@ knitr::include_graphics("homework/1_4.png")
 
   (ii). Write the hypotheses for the test reported in the PROC GLM output {for the 'before' variable, near the end}, in terms of .
 
-\textcolor{blue}{The slope in the hybrid model is $\beta_1$, but note that the test of $H_0$: $\beta_1=0$ is equivalent to $H_0$:$\beta_1' -1 = 0$, i.e., $H_0:\ \beta_1' =1$ vs. $H_1:\ \beta_1' \neq 1$. So really, the BAC and hybrid models are the same, but the output differs slightly due to the different parameterization. In particular, the test for the 'before' slope in the BAC model compares with 0, and in the hybrid model compares it to 1 (thinking in terms of the same BAC slope). The comparison with 1 is probably of more interest: This indicates that the before and after scales are not equivalent. (This test does not include location differences.)}
+\textcolor{blue}{The slope in the hybrid model is $\beta_1$, but note that the test of $H_0$: $\beta_1=0$ is equivalent to $H_0$:$\beta_1' -1 = 0$, i.e., $H_0:\ \beta_1' =1$ vs. $H_1:\ \beta_1' \neq 1$. }
+
+
+\textcolor{purple}{So really, the BAC and hybrid models are the same, but the output differs slightly due to the different parameterization. In particular, the test for the 'before' slope in the BAC model compares with 0, and in the hybrid model compares it to 1 (thinking in terms of the same BAC slope). The comparison with 1 is probably of more interest: This indicates that the before and after scales are not equivalent. (This test does not include location differences.)}
 
 f.  Fit the data using a mixed model, with an UN structure for repeated measures. In this case, don't include baseline as covariate, since it is already an outcome. How do results compare with the Hybrid model? What are pro's and con's of each approach?
 
@@ -98,7 +107,10 @@ f.  Fit the data using a mixed model, with an UN structure for repeated measures
 knitr::include_graphics("homework/1_5.png")
 ```
 
-\textcolor{blue}{Notice that the change estimate is EXACTLY the same as that from the CS model. This helps reaffirm that if it is only mean change you are concerned about, we can use the simple difference approach. We know some advantages of the BAC and Hybrid models relative to the CS model, but we can also see some advantages of the longitudinal approach. First, we get estimates of actual cholesterol values at pre and post times, rather than just the change estimate. We also get an estimate of the correlation between pre and post times, as well as variance estimates at each time point. The longitudinal model would also allow us to add time-varying covariates, if they were of interest. Note that an alternative approach to modeling the data longitudinally would be to include a random intercept and slope for each subject, and allow a covariance between them (i.e., UN structure for $\pmb G$). One disadvantage of the longitudinal model is that it is more difficult to characterize the relationship between change values with starting values.}
+\textcolor{blue} {We can then see that the hybrid model does a better job of teasing out the relationship between pre and post cholesterol levels, namely that the relationship more closely resembles scaling and shifting than simply shifting. The mixed model doesn’t account for this. A mixed model is perhap smore broadly useful in the sense that if we had more time points per subject, a mixed model could account for subject effects and the apparent proportionality relationship whilea standard linear model could not.}
+
+
+\textcolor{purple}{Notice that the change estimate is EXACTLY the same as that from the CS model. This helps reaffirm that if it is only mean change you are concerned about, we can use the simple difference approach. We know some advantages of the BAC and Hybrid models relative to the CS model, but we can also see some advantages of the longitudinal approach. First, we get estimates of actual cholesterol values at pre and post times, rather than just the change estimate. We also get an estimate of the correlation between pre and post times, as well as variance estimates at each time point. The longitudinal model would also allow us to add time-varying covariates, if they were of interest. Note that an alternative approach to modeling the data longitudinally would be to include a random intercept and slope for each subject, and allow a covariance between them (i.e., UN structure for $\pmb G$). One disadvantage of the longitudinal model is that it is more difficult to characterize the relationship between change values with starting values.}
 
 \newpage
 
@@ -111,7 +123,7 @@ First, by iteration we can show that $\epsilon_t=Z_t+\phi Z_{t-1}+...+\phi^k Z_{
 
 a. Determine $E[\epsilon_t]$
 
-\textcolor{blue}{$E[\epsilon_t] = E\big[\sum_{j=0}^\infty\phi^jZ_{t-j} = \sum_{j=0}^\infty\phi^jE\big[Z_{t-j}\big] = 0$}
+\textcolor{blue}{$E[\epsilon_t] = E\big[\sum_{j=0}^\infty\phi^jZ_{t-j}] = \sum_{j=0}^\infty\phi^jE\big[Z_{t-j}\big] = 0$}
 
 b. Determine $Cov[\epsilon_t, \epsilon_{t+h}]$
 
@@ -129,12 +141,28 @@ Cov[\epsilon_t,\ \epsilon_{t+h}]
 = \sigma^2\frac {\phi^h}{1-\phi^2}
 \end{aligned}$$}
 
+
+
 \textcolor{blue}{$Z$ terms have the same index when $t-j=t+h-k$, i.e., when $k=j+h$. So in
 line 6, replace $k$ with $j+h$ for terms in the summation and reduce the summation to $k=0$ to $k=\infty$.} 
+
+
+\textcolor{purple}{Second method: Assuming for $t \leq s$, $\epsilon_t$ is independent from $Z_s$, hence $Cov[\epsilon_t, Z_s] = 0$
+$$\begin{aligned} 
+Cov[\epsilon_t,\ \epsilon_{t+h}] 
+&= Cov[\epsilon_t,\  \sum_{i=1}^{h}\phi^{i-1}Z_{t+i-1} + \phi^h\epsilon_t]\\
+&= Cov[\epsilon_t,\  \sum_{i=1}^{h}\phi^{i-1}Z_{t+i-1}] + Cov[\epsilon_t,\  \phi^h\epsilon_t]\\
+&= \sum_{i=1}^{h}\phi^{i-1}Cov[\epsilon_t,\  Z_{t+i-1}] + \phi^h Cov[\epsilon_t,\  \epsilon_t]\\
+&= 0 + \phi^h Var[\epsilon_t]\\
+&= \phi^h \frac {\sigma^2} {(1-\phi^2)}
+\end{aligned}$$}
+
 
 c. Determine $Corr[\epsilon_t, \epsilon_{t+h}]$
 
 \textcolor{blue}{$$Corr[\epsilon)_t,\ \epsilon_{t+h}] = \frac {Cov[\epsilon_t,\ \epsilon_{t+h}]} {\sqrt{Var[\epsilon_t] Var[\epsilon_{t+h}]}} \frac {\frac {\sigma^2\phi^h} {1-\phi^2}} {\sqrt {\frac {\sigma^2} {(1-\phi^2)}} \sqrt {\frac {\sigma^2} {(1-\phi^2)}}} = \phi^h$$ for nonnegative $h$. Considering any integer h, the correlation is $\phi^{|h|}$}
+
+\textcolor{purple} {Be careful about the autocorrelation definition. Because the autocorrelation $\rho_h = \gamma_{t+h} / \gamma_t$ is defined on the assumption of stationary stochastic process, we cannot use this equation until we proof 2d part. }
 
 d. Is $\{\epsilon_t\}$ a stationary process?
 
@@ -156,7 +184,7 @@ d. Is $\{\epsilon_t\}$ a stationary process?
 
 a. Create a Residual plot (residuals versus year) based on the fitted data from the model ($\hat y_t= \hat \beta_0+\hat  \beta_1 t$ are predicted values; $y_t - \hat y_t$ are residuals). What patterns do you notice? What do you think the plot is telling you?
 
-\textcolor{blue}{The plot suggests lack of fit in the mean part of the model; a clear "W" shape.}
+\textcolor{blue}{The plot suggests lack of fit in the mean part of the model; a clear "W" shape. This may be corrected by including a polynomial term in the regression model, piece-wise regression, or changing the variance estimation structure depending on the issue.}
 
 ```{r out.width="80%", fig.align="center"}
 knitr::include_graphics("homework/1_6.png")
@@ -168,7 +196,8 @@ b. In order to get a better idea whether the AR(1) process with linear time tren
 knitr::include_graphics("homework/1_7.png")
 ```
 
-\textcolor{blue}{Considering mean and error together, the model looks pretty reasonable.}
+\textcolor{blue}{Considering mean and error together, the model looks pretty reasonable. The new
+residual plot shows a good fit to the data}
 
 c. Based on your fitted model, what is the average increase in temperature per decade?
 
@@ -176,7 +205,9 @@ c. Based on your fitted model, what is the average increase in temperature per d
 
 d. Try refitting the data using a polynomial trend for time (decide on the degree of the model by looking at the plot).  How does the model fit compare with the one that using a simple linear trend for time?  What happens to the correlation parameter estimate in this new model?  What do you think about this fit compared with the simple linear model?  (In answering this, don't worry about the '0' SE for higher-order terms; just focus on the fit itself.) 
 
-\textcolor{blue}{With either **quadratic** or **cubic** model, we get a better fit, although there is still a lack of fit in the mean part of the model (when considering the process that does not take the correlated errors into account). The residual plot for the mean shows lack of fit particularly around 1940 to 1945. The correlation parameter estimate decreases from 0.7395 (linear) to **0.4744 (quadratic)** to **0.4655 (cubic)**. What this suggests is that by increasing the complexity of the mean, less is required in the error part of the model. Still, it is not a great model and I'd be tempted to keep the simple linear with AR(1) for general interpretation. If we want the fit the mean process more accurately, we need to try harder, which leads us to the next part.}
+\textcolor{purple}{With either quadratic or cubic model, we get a better fit, although there is still a lack of fit in the mean part of the model (when considering the process that does not take the correlated errors into account). The residual plot for the mean shows lack of fit particularly around 1940 to 1945. The correlation parameter estimate decreases from 0.7395 (linear) to **0.4744 (quadratic)** to **0.4655 (cubic)**. What this suggests is that by increasing the complexity of the mean, less is required in the error part of the model.}
+
+\textcolor{blue}{The p-value for a likelihood ratio test, between full and reduced models, is < 0.001, so the quadratic term model is statistically significantly different from the linear term only model. The AIC fit statistic from the linear model is -201.2, while the AIC for the quadratic model is -225.5, which also indicates a better fit for the quadratic model. Still, it is not a great model and I'd be tempted to keep the simple linear with AR(1) for general interpretation. If we want the fit the mean process more accurately, we need to try harder, which leads us to the next part.}
 
 e. Perform a nonparametric regression fit of the data using PROC LOESS.  Construct a residual plot and histogram.  Do you think this a better/worse/different fit compared with the parametric fits with AR(1) errors?  Explain.
 
@@ -195,8 +226,9 @@ e. Perform a nonparametric regression fit of the data using PROC LOESS.  Constru
 \end{verbatim}
 \normalsize
 
-\textcolor{blue}{I would say that the fit here is decent. It is not a “better” fit than the parameter model overall, just different. But it is better (more nuanced) in terms of describing the mean process. Here, we increase the complexity of the mean part of the model, and so require less on the error part. If you fit a mixed model on the residuals of this LOESS fit, you will find the correlation parameter is around 0.28. But if you drop
-the smoothing parameter value in the LOESS fit to the 'best’ AICC value, which is around 0.1, the correlation parameter decreases below 0.1. Collectively, what these different model fits show is that for a model that has the basic form Outcome=mean+error, if we have a simple 'mean’, then to get an accurate model, we need a more complex 'error' (e.g., simple linear trend plus AR(1) errors). On the other hand, if we have a more complex mean, then the error structure can be simpler (LOESS fit nearly eliminated the need for an AR(1) structure, especially when using a lower smoothing parameter value).}
+\textcolor{blue}{The LOESS is a smoothing function (there is no estimate in the "model") and could be very hard to generalize to boarder situations. If we used a different subsets or different setting, it is hard to believe the LOESS provide the same result every time. It is just different from parametric models. In our lectures, we will limit the LOESS for exploratory purposes, while it looks good it can’t be interpreted well and can’t be used to predict future temperatures.}
+
+\textcolor{purple}{I would say that the fit here is decent. It is not a “better” fit than the parameter model overall, just different. But it is better (more nuanced) in terms of describing the mean process. Here, we increase the complexity of the mean part of the model, and so require less on the error part. If you fit a mixed model on the residuals of this LOESS fit, you will find the correlation parameter is around 0.28. But if you drop the smoothing parameter value in the LOESS fit to the 'best’ AICC value, which is around 0.1, the correlation parameter decreases below 0.1. Collectively, what these different model fits show is that for a model that has the basic form Outcome=mean+error, if we have a simple 'mean’, then to get an accurate model, we need a more complex 'error' (e.g., simple linear trend plus AR(1) errors). On the other hand, if we have a more complex mean, then the error structure can be simpler (LOESS fit nearly eliminated the need for an AR(1) structure, especially when using a lower smoothing parameter value).}
 
 
 
