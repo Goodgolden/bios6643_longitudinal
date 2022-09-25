@@ -1,0 +1,276 @@
+---
+title: "Homework 2"
+subtitle: BIOS6643 Fall 2021
+date: "Due Tues 10/5/2021 at midnight"
+output:
+  #   df_print: paged
+  # html_document:
+  pdf_document:
+    # latex_engine: xelatex
+fontsize: 10pt
+header-includes:
+- \usepackage{arydshln}
+- \usepackage{bm}
+- \usepackage{xfrac}
+- \usepackage{ulem}
+- \usepackage{cancel}
+- \usepackage{gensymb}
+- \usepackage{units}
+---
+
+```{r echo=FALSE} 
+## to change the R codes into tiny size
+knitr::knit_hooks$set(mysize = function(before, options, envir) { 
+  if (before) { 
+    return(options$size) 
+  } else { 
+    return("\\tiny") 
+  } 
+}) 
+knitr::opts_chunk$set(mysize = TRUE, size = "\\tiny")
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#install.packages("emo")
+##library(emo)
+
+
+## plotting pca
+library("car")
+library("grDevices")
+
+## data cleaning
+library("tidyverse")
+library("here")
+library("janitor")
+
+## lmm model and ddf
+library("nlme")
+library("parameters")
+
+## contrast setting
+library("emmeans")
+library("multcomp")
+
+## run SAS in R
+require(SASmarkdown)
+library(knitr)
+```
+
+
+## Question 3. Models for Beta Carotene data
+
+For the Beta Carotene data (see the description of the data and the data itself in another link in the Data module).  For parts **a** and **b**, model $time$ and $group$ as class variables, and include $group \times time$.  In order to account for repeated measures over $time$, specify the $UN$ error covariance structure.
+
+a.	Conduct a test to compare the 30 and 60mg BASF trends over $time$ to see if they differ, i.e., an interaction test, but only involving these 2 $groups$.
+
+
+\textcolor{blue}{Consider the following differences for each group: 6 weeks - baseline, 8 weeks - baseline, 10 weeks -baseline, 12 weeks - baseline. Then consider the differences between these differences for BASF 30mg and BASF 60mg. Below there are two different ways of estimating the model and the contrast. }
+
+
+```{r include=FALSE}
+# set up the options so that knit knows where you SAS executable is
+# set the line size to be easily readable on letter size paper, portrait
+# and set the knitr options using opts_chunk$set().
+saspath <- 'C:/Program Files/SASHome/SASFoundation/9.4/sas.exe'
+sasopts <- '-nosplash -ls 75'
+knitr::opts_chunk$set(engine.path = list(sas = saspath),
+                      engine.opts = list(sas= sasopts), 
+                      comments = NA,
+                      echo=TRUE)
+```
+
+
+
+```{r, engine="sas"}
+
+proc import DATAFILE='C:\Users\juarezce\OneDrive - The University of Colorado Denver\BIOS6643\BIOS6643_Notes\data\beta_carotene_univar.csv'
+DBMS=csv out=beta replace; run;
+
+
+/*Interaction between time and BASF group*/
+proc mixed data= beta;
+class prepar time;
+model y= prepar time prepar*time / noint solution ddfm=satterth;
+repeated / subject=ID type=un;
+
+estimate 'mean diff BASF 30mg time0 - time6'
+time 1 -1 0 0 prepar*time 0 0 0 0 0   0 0 0 0 0   1 -1  0  0  0    0  0  0  0  0;
+estimate 'mean diff BASF 30mg time0 - time8'
+time 1 0 -1 0 prepar*time 0 0 0 0 0   0 0 0 0 0   1  0 -1  0  0    0  0  0  0  0;
+
+estimate 'mean diff BASF 60mg time0 - time6'
+time 1 -1 0 0 prepar*time 0 0 0 0 0   0 0 0 0 0   0  0  0  0  0    1 -1  0  0  0;
+estimate 'mean diff BASF 60mg time0 - time8'
+time 1 0 -1 0 prepar*time 0 0 0 0 0   0 0 0 0 0   0  0  0  0  0    1  0 -1  0  0;
+
+
+contrast 'Interaction BASF 30mg and BASF 60mg'
+/* think about the difference in estimates between time=6 - time=0 between the two groups*/
+/* also the difference in estimates between time=8 - time=0 between the two groups*/
+/*terms      prepar=1     prepar=2     prepar=3        prepar=4*/
+ prepar*time 0 0 0 0 0   0 0 0 0 0  1 -1  0  0  0  -1  1  0  0  0,
+ prepar*time 0 0 0 0 0   0 0 0 0 0  1  0 -1  0  0  -1  0  1  0  0,
+ prepar*time 0 0 0 0 0   0 0 0 0 0  1  0  0 -1  0  -1  0  0  1  0,
+ prepar*time 0 0 0 0 0   0 0 0 0 0  1  0  0  0 -1  -1  0  0  0  1;
+run;
+
+**********************;
+/** an alternative way of setting up the model;*/
+
+/*Interaction between time and BASF group*/
+proc mixed data= beta;
+class prepar time;
+model y= time prepar*time / noint solution ddfm=satterth;
+repeated / subject=ID type=un;
+
+contrast 'Interaction BASF 30mg and BASF 60mg'
+/*terms      prepar=1     prepar=2     prepar=3        prepar=4*/
+ prepar*time 0 0 0 0 0   0 0 0 0 0  1 -1  0  0  0  -1  1  0  0  0,
+ prepar*time 0 0 0 0 0   0 0 0 0 0  1  0 -1  0  0  -1  0  1  0  0,
+ prepar*time 0 0 0 0 0   0 0 0 0 0  1  0  0 -1  0  -1  0  0  1  0,
+ prepar*time 0 0 0 0 0   0 0 0 0 0  1  0  0  0 -1  -1  0  0  0  1;
+run;
+
+
+```
+
+
+
+
+\normalsize
+
+
+
+\textcolor{blue}{The results show that the overall interaction (involving all groups) is marginally significant at the 0.05 level, and the interaction involving only the BASF groups has a smaller pvalue. }
+
+
+
+```{r include=FALSE}
+# set up the options so that knit knows where you SAS executable is
+# set the line size to be easily readable on letter size paper, portrait
+# and set the knitr options using opts_chunk$set().
+sasopts <- "-nosplash -linesize 75"
+saspath <- "C:/Program Files/SASHome/SASFoundation/9.4/sas.exe"
+## those two parts should have been universal 
+## just copy and paste into your Rmarkdown files
+knitr::opts_chunk$set(engine = "sas", 
+                      engine.path = saspath, 
+                      engine.opts = sasopts, 
+                      comment = NA)
+
+```
+
+\normalsize
+
+b.	Conduct a test to compare to see if the 12 week - baseline value differs between the 4 $groups$.
+
+\textcolor{blue}{We can estimate the mean differences for each group, then consider differences between group 2 with respect to group  1, group 3 versus group 1, and group 3 versus group 1. } 
+
+
+```{r, engine="sas"}
+proc import DATAFILE='C:\Users\juarezce\OneDrive - The University of Colorado Denver\BIOS6643\BIOS6643_Notes\data\beta_carotene_univar.csv'
+DBMS=csv out=beta replace; run;
+
+  
+/*Interaction between time and BASF group*/
+proc mixed data= beta;
+class prepar time;
+model y= prepar time prepar*time / noint solution ddfm=satterth;
+repeated / subject=ID type=un;
+
+*estimate 'mean diff Solatene time0 - time12'
+time 1 0 0 -1 prepar*time 1 0 0 0 -1   0 0 0 0 0   0  0  0  0 0    0  0  0  0  0;
+
+*estimate 'mean diff Roche time0 - time12'
+time 1 0 0 -1 prepar*time 0 0 0 0 0    1 0 0 0 -1   0  0  0  0 0    0  0  0  0  0;
+
+*estimate 'mean diff BASF 30mg time0 - time12'
+time 1 0 0 -1 prepar*time 0 0 0 0 0    0 0 0 0 0   1  0  0  0 -1    0  0  0  0  0;
+
+*estimate 'mean diff BASF 60mg time0 - time6'
+time 1 0 0 -1 prepar*time 0 0 0 0 0   0 0 0 0 0   0  0  0  0  0    1  0  0  0  -1;
+
+
+  ***placeholder  for question b;
+contrast 'Difference 12 week - baseline between the 4 groups'
+/*terms      prepar=1      prepar=2      prepar=3         prepar=4*/
+ prepar*time 1 0 0 0 -1   -1 0 0 0 1   0  0  0  0 0    0  0  0  0  0,
+ prepar*time 1 0 0 0 -1    0 0 0 0 0  -1  0  0  0 1    0  0  0  0  0,
+ prepar*time 1 0 0 0 -1    0 0 0 0 0   0  0  0  0 0   -1  0  0  0  1;
+
+run;
+
+
+
+```
+
+\normalsize
+\textcolor{blue}{ There does not seem to be a difference between the four groups when comparing the difference of means at 12 weeks versus baseline.} 
+
+\normalsize
+
+c.	Consider the model that uses $time$ as continuous, with up to cubic effects, plus interactions between group and time (up to cubic).  How does this model compare with the one that uses $time$ as class (plus interactions)?  Discuss in a paragraph.  
+
+
+\textcolor{blue}{The advantage of using time as a class variable is that each group by time interaction gets its own unique estimate. This means that there are not trend restrictions on the model; we are not constraining the model to a straight line or any other pattern. This is the most flexible model. }
+
+\textcolor{blue}{However, there are cases when a continuous time trend fits the model well, and the simpler model may be sufficient. Continuous time allows us to interpolate and estimate means at unobserved times.}
+
+
+
+d.	Modeling the data using $Time 0$ as a covariate value, with the remaining $times$ as repeated measures on the outcome (6, 8, 10, 12 weeks).  What are pros and cons of this approach, relative to using all measures as outcome values in a longitudinal model?  In particular, focuses on the modeling of the repeated measures, how fixed effects need to be specified, and impact of modeling of $time$ as class versus continuous.
+
+
+\textcolor{blue}{An advantage of using the baseline as a covariate is that you now have 4 equally spaced time points and you can use a simpler covariance structure, like the AR(1), which was built for equally spaced measures.
+With this approach we can also establish a slope relationship between the outcome and baseline value.
+However, Using all 5 measures in a longitudinal model would allow us to estimate means continuously over time; for example, for times between 0 and 6
+weeks (e..g using using polynomials and time as continuous). It gives us a more complete picture of
+changes over time, from 0 all the way up through 12 weeks (also see part e below).}
+
+
+\newpage
+
+e.	For the model in part **d**, estimate the linear, quadratic and cubic trends for the orthogonal polynomial model that uses $time$ as a class variable.
+
+
+\textcolor{blue}{Since the question does not specify group, we could consider estimate these trends in the main effect for time, i.e.,
+averaging over group. None of these effects are significant, which is not a surprise since the main effect
+of time itself was not significant. }
+
+\textcolor{blue}{An acceptable answer could provide the trends for a given group as long as this is recognized/acknowledged. } 
+
+```{r, engine="sas"}
+proc import DATAFILE='C:\Users\juarezce\OneDrive - The University of Colorado Denver\BIOS6643\BIOS6643_Notes\data\beta_carotene_univar.csv'
+DBMS=csv out=beta0 replace; run;
+
+
+  /*reshape data*/
+proc sort data=beta0; by prepar id time; run;
+data bl; set beta0; if time=0; 
+keep id prepar time y; rename y=y_bl;
+
+proc sort data=bl; by id time;
+proc sort data=beta0; by id time;
+data beta; merge beta0 bl; by id; 
+if time^=0; run; 
+
+proc mixed data= beta;
+class prepar time;
+model y= y_bl prepar time /solution ddfm=satterth;
+repeated / subject=ID type=unr rcorr;
+estimate 'linear' time -3 -1 1 3;
+estimate 'quadratic' time 1 -1 -1 1;
+estimate 'cubic' time -1 3 -3 1;
+
+*ods select estimates;
+*ods select contrasts;
+*   ods trace on;
+*   ods show;
+run;  
+
+
+
+```
