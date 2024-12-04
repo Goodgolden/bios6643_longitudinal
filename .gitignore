@@ -7,4 +7,6 @@ cache/
 .aux
 .out
 .log
-Julia's slides/
+.tex
+.log
+/cache/
