@@ -1,0 +1,405 @@
+---
+title: "Chapter 10"
+author: "Randy"
+date: "9/12/2021"
+output: html_document
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Chapter 10: Linear Model with Fixed Effects and Correlated Errors
+
+violation of iid assumptions
+
+-   from studies collecting measures over time, i.e., in a longitudinal
+    fashion
+-   in designs which involve clustering or grouping, e.g.,
+    cluster-randomization clinical trials;
+-   in studies collecting spatially correlated data,
+
+a class of more general LMs that allow relaxing the assumptions of
+independence and variance homogeneity
+
+LMs with fixed effects and correlated residual errors for grouped data,
+or simply as LMs for correlated data
+
+$$
+\begin{split}
+& \pmb y_i = \pmb X_i\pmb \beta + \pmb \epsilon_i\ \ \ \ (10.1)\\
+& \pmb y_i \equiv \{ _c\  y_{ij}\}_{j=1}^{n_i} \\
+& \pmb \epsilon_i \equiv \{ _c\  \epsilon_{ij}\}_{j=1}^{n_i}\\
+& \pmb X_i\equiv \{r\ \pmb x_i^{(m)} \}_{m=1}^{p} \equiv \{_r\  \{_c\ x_{ij} \}_{j=1}^{n_i} \}_{m=1}^{p}\\
+& \pmb \epsilon_i \sim \mathcal N_{n_i}(\pmb 0,\ \pmb {\mathbb R}_i)\\
+& \pmb {\mathbb R}_i = \sigma^2\pmb R_i \ \ \ \ (10. 5)\\
+& E[y_{ij}] \equiv \mu_{ij} = \pmb x_{ij}'\pmb \beta \ \ \ \ (10.6)\\
+& Var[\pmb y_i] = \sigma^2 \pmb R_i \ \ \ \ (10.7)
+\end{split}
+$$
+
+## 10.3 Details of Model Specification
+
+-   The LM with correlated errors is not identifiable in its most
+    general form.
+-   The nonuniqueness of the representation (10.5) and because the model
+    potentially involves too many unknown parameters related to the
+    variance-covariance matrix of the residual errors $\pmb \epsilon_i$.
+-   A solution is to represent the matrices as functions of a small
+    number of parameters.
+
+$\pmb R_i = \pmb \Lambda_i \pmb C_i \pmb \Lambda_i$
+
+$$
+\{\pmb \Lambda_i\}_{j,j} \equiv \lambda_{i_{j,j}} = \lambda (\mu_{ij}, \pmb \delta; \pmb v_{ij}) \ \ \ \ (10.9)
+$$
+
+$\pmb \delta$ is a vector of variance parameters, and $\pmb v_{ij}$ is a
+vector of (known) variance covariates. Moreover, we assume that the
+matrix $\pmb C_i$ is specified using a set of parameters $\pmb \rho$.
+
+$$
+\pmb R_i(\mu_{ij},\ \pmb \theta_R;\ \pmb v_{ij}) = \pmb \Lambda_i(\mu_{ij},\ \pmb \delta;\ \pmb v_{ij})\pmb C_i(\pmb \rho)\pmb \Lambda_i(\mu_{ij},\ \pmb \delta;\ \pmb v_{ij}) \ \ \ \ (10.10)
+$$
+
+$\pmb \theta_R \equiv (\pmb \delta',\ \pmb \rho')$. However, to simplify
+notation, we will often suppress the use of $\pmb \theta_R$, $\mu_{ij}$,
+and $\pmb v_{ij}$ in formulae, unless specified otherwise.
+
+### 10.3.1 Variance Structure
+
+$$
+Var(\epsilon_{ij}) = \sigma^2 \lambda^2(\mu _{ij},\ \pmb \delta;\ \pmb v_{ij}) \ \ \ \ (10.11)
+$$
+
+-   The decomposition (10.10) allows for the use of both
+    mean-independent and mean-dependent variance functions (Table 7.1).
+
+-   However, as mentioned in, e.g., Sects. 7.4 and 7.8, the application
+    of variance functions that depend on the mean value requires the use
+    of more advanced estimation and inferential approaches.
+
+$$
+Var(\epsilon_{ij}) = \sigma^2 \lambda^2(\pmb \delta;\ \pmb v_{ij}). (10.12)
+$$
+
+### 10.3.2 Correlation Structure
+
+the matrix $\pmb C_i$ is specified by assuming that the correlation
+coefficient between two residual errors, $\epsilon_{ij}$ and
+$\epsilon_{ij'}$, corresponding to two observations from the same group
+$i$, is given by
+
+$$
+Corr(\epsilon_{ij},\ \epsilon_{ij'}) = h[d(\pmb t_{ij},\ \pmb t_{ij'}), \pmb \rho] \ \ \ \ (10.13)
+$$
+
+where $\pmb \rho$ is a vector of correlation parameters,
+$d(\pmb t_{ij},\ \pmb t_{ij'})$ is a distance function of vectors of
+position variables $\pmb t_{ij}$ and $\pmb t_{ij'}$ corresponding to,
+respectively, $\epsilon_{ij}$ and $\epsilon_{ij'}$, and $h(·,\ ·)$ is a
+continuous function with respect to $\pmb \rho$, such that it takes
+values between $-1$ and $1$, and $h(0,\ \pmb\rho) \equiv 1$.
+
+By assuming various distances and correlation functions, a variety of
+correlation structures can be obtained.
+
+`corCompSymm` a compound-symmetry structure corresponding to uniform
+correlation. `corAR1` corresponding to an autoregressive process of
+order 1. `corARMA` corresponding to an autoregressive moving average
+(ARMA) process. `corCAR1` corresponding to a continuous-time
+autoregressive process. `corSymm` a general correlation matrix
+(unstructured). `corExp` exponential spatial correlation. `corGaus`
+Gaussian spatial correlation. `corLin` linear spatial correlation.
+`corRatio` rational quadratic spatial correlation. `corSpher` spherical
+spatial correlation.
+
+The correlation structures can be classified into two main groups:
+
+1.  "Serial" structures (`corCompSymm`, `corAR1`, `corARMA`, `corCAR1`,
+    `corSymm`), corresponds to the correlation structures which are
+    defined in the context of time-series or longitudinal data.
+
+2.  "Spatial" structures (`corExp`, `corGaus`, `corLin`, `corRatio`,
+    `corSpher`), corresponding to correlation structures which are
+    defined in the context of spatial data.
+
+![](figure/lmmur_t_10.1.png "Examples of serial and spatial correlation structures")
+
+### 10.3.3 Serial Correlation Structures
+
+Note that, for time-series data, the function $h(.,\ .)$ is often called
+an autocorrelation function.
+
+the simplest serial correlation structure, compound-symmetry
+(`corCompSymm`), assumes a constant correlation between all within-group
+residual errors.
+
+This means that
+$Corr(\epsilon_{ij},\ \epsilon_{ij'}) = \rho\ \ \ \ (10.14)$, which
+corresponds to (10.13) upon defining, for $j \neq j'$ and
+$k = 1,\ 2,\ ...$, $h(k,\ \rho) \equiv \rho \ \ \ \ (10.15)$
+
+A more advanced example of a serial correlation structure, `corARMA`, is
+obtained from an ARMA process.
+
+The process corresponds to longitudinal observations, for which a
+current observation can be expressed as a sum of:
+
+(1) a linear combination of, say $p$, previous observations;
+(2) a linear combination of, say $q$, meanzero, independent and
+    identically distributed residual random errors from previous
+    observations;
+(3) a mean-zero, independent residual random error for the current
+    measurement.
+
+The structure is described by $p+q$ parameters. Unlike the correlation
+structures shown in Table 10.1, the (auto)correlation function of an
+ARMA process cannot be expressed by a simple, closed-form expression,
+but it is defined by a recursive relation
+
+### 10.3.4 Spatial Correlation Structures
+
+$Corr(\epsilon_{ij},\ \epsilon_{ij'}) = \exp (-s_{ij,\ ij'}/\rho) \ \ \ \ (10.16)$
+where $s_{ij,\ ij'} = d(\pmb t_{ij},\ \pmb t_{ij'})$ is a real number
+equal to the distance between the two position vectors $\pmb t_{ij}$ and
+$t_{ij'}$ corresponding to observations $j$ and $j'$, respectively, from
+the same group $i$. The corresponding function $h$ is defined as
+$h(s,\ \rho) \equiv \exp(-s/ \rho) \ \ \ \ (10.17)$
+
+-   The most natural choice is the Euclidean distance, i.e., the square
+    root of the sum, over all dimensions, of the squares of distances.
+
+-   The "maximum (or Tchebyshev) metric, i.e., the maximum, over all
+    dimensions, of the absolute differences;
+
+-   Manhattan (or "city block", "taxicab") distance, i.e., the sum, over
+    all dimensions, of the absolute differences. Note that these three
+    choices correspond to the $L_2$, $L_\infty$ (Cantrell 2000), and
+    $L_1$ metrics, respectively.
+
+It is worth noting that in the spatial correlation literature, the
+parameter %, used in Table 10.1 for the spatial structures, is referred
+to as range. spatial correlation functions are continuous and
+monotonically nonincreasing.
+
+This characteristic reflects a commonly observed feature of the data
+that observations being further apart are correlated to a lesser degree.
+
+This requirement can be relaxed by including the so-called **nugget
+effect**, an abrupt change in correlation at small distances
+(discontinuity at zero), which can be defined by the condition that
+$h(s,\ \rho)$ tends to $1 - \rho_0$, with $\rho_0 \in (0,\ 1)$, when $s$
+tends to $0$.
+
+In other words, a discontinuity at $s = 0$ can be allowed for.
+Consequently, a correlation function $h_{\rho_0} (·,\ ·)$ containing a
+nugget effect can be obtained from any continuous spatial correlation
+function $h(·,\ ·)$ by defining
+
+$$
+h_{\rho_0} (s,\ \pmb \rho) \equiv
+\begin{cases} 
+(1 - \rho_0)h(s, \pmb\rho) & if\ s > 0,\\ 
+1 & if\ s = 0
+\end{cases}
+\ \ \ \ (10.18)
+$$
+
+Instead of the correlation function, spatial correlation structures are
+often represented by the semivariogram function or simply semivariogram
+(Cressie 1991).
+
+For the cases considered in this book, the semivariogram function can be
+defined as the complement of the correlation function, that is,
+
+$$
+\gamma(s,\ \pmb \rho) \equiv 1 - h(s,\ \pmb \rho) \ \ \ \ (10.19)
+$$
+
+$$
+\gamma_{\rho_0} (s,\ \pmb \rho) \equiv
+\begin{cases} 
+\rho_0 + (1 - \rho_0)\gamma(s, \pmb\rho) & if\ s > 0,\\ 
+0 & if\ s = 0
+\end{cases}
+\ \ \ \ (10.20)
+$$
+
+Consequently, $\gamma(s,\ \pmb\rho)$ tends to $\rho_0$, with
+$\rho_0 \in (0,\ 1)$, when $s$ tends to $0$.
+
+![](figure/lmmur_f_10.1.png "Semivariogram")
+
+## 10.4 Estimation
+
+focus on the estimation approaches for simpler models defined with the
+use of variance functions from the $<\delta>$-group, which do not depend
+on the mean value (see Table 7.2)
+
+### 10.4.1 Weighted Least Squares
+
+Similarly to models with known variance weights presented in Sect.
+7.2.1, the model with known matrices $\pmb R_i$ does not pose any
+additional computational difficulties
+
+$$
+\pmb W^{1/2}_i \pmb y_i = \pmb W^{1/2}_i \pmb X_i \pmb \beta + \pmb W_i^{1 /2} \pmb \epsilon_i \ \ \ \ (10.21)
+$$ $\pmb W_i^{1/2} \equiv \pmb R^{-1/2}_i$, where $\pmb R_i^{1/2}$ is
+the upper-triangular Cholesky decomposition of $\pmb R^{-1}_i$, i.e.,
+$\pmb R^{-1}_i = (\pmb R^{- 1/2}_i)' \pmb R^{- 1/2}_i$, we transform the
+model with correlated residual errors back to an LM with independent,
+homoscedastic errors.
+
+Note that, in the transformed model, the linearity with respect to
+$\pmb \beta$ is maintained.
+
+Moreover, the variance-covariance matrix of the transformed residual
+error vector is
+$Var(\pmb W_i^{1/2} \pmb \epsilon_i) = \pmb W_i^{1/2} Var(\epsilon_i) (\pmb W_i^{1/2})' = \pmb R^{-1/2}_i(\sigma ^2 \pmb R_i)(\pmb R^{- 1/2}_i)' = \sigma^2 \pmb I_{n_i}$.
+
+The estimates of $\pmb \beta$ are obtained by the minimization, with
+respect to $\pmb \beta$, of a weighted residual sum of squares
+
+$$
+\sum_{i=1}^n (\pmb y_i - \pmb X_i\pmb\beta)' \pmb W_i(\pmb y_i - \pmb X_i \pmb \beta) \ \ \ \ (10.22)
+$$
+
+Explicit formulae for WLS estimators for $\pmb \beta$ and $\sigma^2$,
+built upon (7.18) and (7.19), are as follows:
+
+$$
+\pmb {\hat \beta}_{WLS} 
+\equiv \Bigg(\sum^N_{i=1} \pmb X'_i \pmb W_i \pmb X_i\Bigg)^{-1} 
+\sum^N_{i=1}\pmb X'_i \pmb W_i \pmb y_i \ \ \ \ (10.23)\\
+\sigma^2_{WLS} \equiv \frac 1 {n - p} 
+\sum^N_{i=1} (y_i - \pmb X_i \pmb {\hat \beta}_{WLS})' \pmb W_i (y_i - \pmb X_i\pmb {\hat \beta}_{WLS})  \ \ \ \ (10.24)
+$$
+
+where $\pmb W_i \equiv \pmb R^{- 1}_i$ and $n = \sum^N_{i=1} n_i$.
+
+## 10.4.2 Likelihood-Based Estimation
+
+$$
+l_{Full}(\pmb \beta,\ \sigma^2,\ \pmb \theta_R) \equiv 
+- \frac n 2 \log(\sigma^2)- \frac 1 2 \sum^N_{i=1} \log[det(\pmb R_i)]
+- \frac 1 {2\sigma^2} \sum_N^{i=1} (\pmb y_i - \pmb X_i\pmb \beta)' \pmb R_{i}^{-1} 
+(\pmb y_i - \pmb X_i\pmb \beta) \ \ \ \ (10.25)
+$$
+
+Note that we presented unconstrained parameterizations for selected
+correlation structures.
+
+The transformations, which preserve the positive-definiteness of the
+matrix $\pmb C_i$ are relatively simple for the compound-symmetry and
+the autoregressiveof-order-1 structures, while it is more complex for a
+general structure.
+
+We need to keep in mind that for some correlation structures, especially
+for those described by multiple parameters, there is no guarantee that
+such transformations exist.
+
+### 10.4.4 Uncertainty in Parameter Estimation
+
+$$
+\widehat {Var} (\hat \beta) \equiv \hat \sigma^2 \Big(\sum^N_{i=1}
+\pmb X_i' \hat {\pmb R}^{-1}_i \pmb X_i\Big)^{-1}\ \ \ \ (10.38)
+$$
+
+## Model Diagnostics
+
+### 10.5.1 Residual Diagnostics
+
+Thus, the comments regarding residual diagnostics for the LM for
+independent observation with heterogeneous variance, provided in Sect.
+7.5, apply here as well. Consequently, Pearson residuals (see Sect.
+7.5.1) are more useful for checking for, e.g., outlying observations.
+
+Therefore, the Pearson residuals are well suited to investigate whether
+an appropriate correlation structure was used in the model.
+
+$$
+\frac 1 {2N(s)} \sum^N_{i=1} \sum_{d(\pmb t_{ij},\ \pmb t_{ij'})=s}(r_{ij} - r_{ij'})^2 \ \ \ \ (10.39)
+$$
+
+$$
+\frac 1 {0.457 + 0.494/N(s)}
+\Bigg(
+\frac 1 {2N(s)} \sum^N_{i=1} \sum_{d(\pmb t_{ij},\ \pmb t_{ij'})=s}|r_{ij} - r_{ij'}|^{1/2} \Bigg)^4\ \ \ \ (10.40)
+$$
+
+Thus, for example, even if we studentize the residuals (Sect. 4.6.1),
+the overall Q-Q plots, based on all estimated residuals, are not
+appropriate for checking the normality of the residual random error.
+
+A possible solution is to obtain approximately independent residuals
+using the transformation of the residuals based on the Cholesky
+decomposition of the matrix $\pmb R_i$ (see Sect. 4.5.2).
+
+-   That is, to use the transformed residuals
+    $(\sigma \pmb U'_i)^{-1} \pmb {\hat \epsilon}_i$, where the
+    upper-triangular matrix $\pmb U_i$ is obtained from the Cholesky
+    decomposition of the matrix $\pmb R_i$, i.e.,
+    $\pmb R_i = \pmb U'_i \pmb U_i$ (Schabenberger 2004).
+
+-   The vector of the transformed residuals should be approximately
+    normally distributed with mean $\pmb 0$ and variance-covariance
+    matrix equal to an identity matrix.
+
+-   That is, the elements of the vector should be uncorrelated and
+    follow the standard normal distribution.
+
+-   Note that, in the `nlme` package, these transformed residuals are
+    referred to as normalized residuals. We will use this term in the
+    remainder of our book
+
+### 10.5.2 Influence Diagnostics
+
+After identifying influential observations using likelihood
+displacement, Cook's distance, similar to that given in (4.26), may be
+used to determine whether a particular observation affects estimation of
+$\pmb \beta$.
+
+## 10.6 Inference and Model Selection
+
+The comments about the use of the REML in the construction of the LR
+test apply here as well.
+
+The second approach, based on the information criteria, is used when the
+hypothesis about qR cannot be expressed in the way that it would lead to
+two nested models. In this case, we can use the information criteria
+like AIC or BIC (Sect. 4.7.2) to select the model that seems to better
+fit the data.
+
+The information criteria can be also used for the more general problem
+of model selection, i.e., for discrimination between nonnested models,
+which differ both in the variance-covariance and the mean structures. In
+this case, the criteria are applied in a way similar to the one
+described in Sect. 7.7.
+
+Obviously, irrespectively of the approach chosen for the model reduction
+or selection, the fit of the final model should be formally checked
+using the residual diagnostic methods.
+
+Confidence intervals for the variance-covariance parameters s and d can
+be obtained by considering a normal-distribution approximation to the
+distribution of the ML- or REML-based estimator of a transformation of
+the parameters.
+
+A similar idea can be applied to construct confidence intervals for the
+correlation parameters $\pmb \rho$.
+
+## 10.7 Mean-Variance Models
+
+It carries naturally over to LMs with fixed effects for correlated data.
+
+the decomposition (10.10) involves meandependent variance functions from
+$<\sigma,\ \mu>$ and $<\mu>$-groups
+
+Thus, in particular, the residual error variance is given by (10.11) and
+it depends on the fixed-effects parameters $\beta$. This dependence
+complicates the estimation not only of $\beta$, but also of $\sigma^ 2$
+and $\theta_R$.

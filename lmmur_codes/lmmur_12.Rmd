@@ -1,0 +1,174 @@
+---
+title: "lmmur_12"
+author: "Randy"
+date: "10/9/2021"
+output: ''
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Chatper 12 ARMD Trial: Modeling Correlated Errors for Visual Acuity
+
+## 12.2 The Model with Heteroscedastic, Independent Residual Errors Revisited
+
+$$
+VISUAL_{it} = \beta_{0t} + \beta_1 \times VISUAL0_i + \beta_{2t} \times TREAT_i + \epsilon_{it} \ \ \ \ (12.1)
+$$
+
+$$
+\mathcal R_i = \sigma^2 \Lambda_i C_i \Lambda_i \ \ \ \ (12.2)
+$$
+
+with $C_i \equiv I_4$
+
+We consider initially models with the same mean structure as the one defined in (12.1), but with different variance-covariance (correlation) structures.
+
+
+$$
+\Lambda_i \equiv 
+\begin{pmatrix}
+(Time_{i1})^\delta & 0 & 0 & 0\\
+0 & (Time_{i2})^\delta & 0 & 0\\
+0 & 0 & (Time_{i3})^\delta & 0\\
+0 & 0 & 0 & (Time_{i4})^\delta  
+\end{pmatrix}
+\ \ \ \ \ (12.3)
+$$
+
+## 12.2.1 Empirical Semivariogram
+
+It is worth noting that, in the ARMD trial, time differences for all possible six pairs of timepoints are different.
+
+we can estimate the semivariogram to calculate correlation coefficients between Pearson residuals for every pair of timepoints, separately.
+
+Note that, when applying the function to a model-fit object of class gls, many additional arguments, above those mentioned in Sect. 11.3.2, are available.
+
+In particular, the argument robust can be used.
+
+If `robust=TRUE`, the semivariogram is estimated using the robust estimator, given in (10.40).
+
+By default, `robust=FALSE`, and the semivariogram function is estimated using the estimator defined in (10.39).
+
+This is the case for the `Variogram()`-function call used in Panel R12.1a.
+
+```{r "R12.1", fig.height=5, fig.width=5}
+## (a) Per time difference
+(Vg1 <- Variogram(fm9.2, form = ~ time | subject))
+## Fig.12.1a
+plot(Vg1, smooth = FALSE, xlab = "Time difference")
+
+## (b) Per time lag
+(Vg2 <- Variogram(fm9.2, form = ~tp | subject))
+## smooth argument needs to be FALSE
+plot(Vg2, smooth = FALSE, xlab = "Time Lag")
+```
+
+-   A more appropriate structure might be, e.g., an autoregressive process of order 1 (see Table 10.1).
+
+## 12.3 A Linear Model with a Compound-Symmetry Correlation Structure
+
+### 12.3.1 Model Specification
+
+$$
+VISUAL_{it} = \beta_{0t} + \beta_1 \times VISUAL0_i + \beta_{2t} \times TREAT_i + \epsilon_{it} \ \ \ \ (12.1)
+$$
+
+$$
+\mathcal R_i = \sigma^2 \Lambda_i C_i \Lambda_i \ \ \ \ (12.2)
+$$
+
+We assume that the mean structure of the model, specified in this section and labeled as M12.1, is the same as the one implied by (12.1). On the other hand, we assume that the marginal variance-covariance matrix is of the form defined in (12.2), with $Lambda_i$ given in (12.3)
+
+$$
+\Lambda_i \equiv 
+\begin{pmatrix}
+(Time_{i1})^\delta & 0 & 0 & 0\\
+0 & (Time_{i2})^\delta & 0 & 0\\
+0 & 0 & (Time_{i3})^\delta & 0\\
+0 & 0 & 0 & (Time_{i4})^\delta  
+\end{pmatrix}
+\ \ \ \ \ (12.3)
+$$
+
+and
+
+$$
+\pmb C_i \equiv
+\begin{pmatrix}
+1 & \rho &  \rho &  \rho \\
+\rho &  1 & \rho &  \rho \\
+\rho &  \rho &  1 & \rho \\
+\rho &  \rho &  \rho &  1
+\end{pmatrix}
+\ \ \ \ \ (12.4)
+$$
+
+As a result, we obtain a compound-symmetry correlation structure and a heterogeneous compound-symmetry variance-covariance structure.
+
+```{r}
+## (a) Fitting model M12.1
+lm1.form <- # (12.1)
+  formula(visual ~ -1 + visual0 + time.f + treat.f:time.f)
+
+fm12.1 <- # M12.1
+ gls(lm1.form, weights = varPower(form = ~time),
+ correlation = corCompSymm(form = ~1|subject),
+ data = armd)
+
+summary(fm12.1)
+## (b) 95% CIs for the variance-covariance parameters
+intervals(fm12.1, which = "var-cov") 
+```
+
+## 12.3.2 Syntax and Results
+
+the variance-covariance matrix $\pmb R_i$ using the *varPower* class of variance functions and *corCompSymm* class of correlation functions, described in Sects. 8.2 and 11.4.1, respectively.
+
+in Panel R12.2a, we use the weights argument combined with the `varPower()` constructor function and the correlation argument combined with the `corCompSymm()` constructor function.
+
+The `correlation = corCompSymm(form = ~1|subject)` argument indicates that we use the same correlation coefficient for different observations for each level of the subject factor.
+
+Thus, the default value, i.e., method="REML", is used (Sect. 5.4).
+
+This is because, at this point, we focus on the estimation of the variance-covariance structure of the data.
+
+The results indicate that, according to the assumed compound-symmetry correlation structure, the correlation coefficient of any two visual acuity measurements obtained for the same patient $\rho$ is equal to 0.573.
+
+The 95% CI for the correlation coefficient confirms that there is a nonnegligible correlation between the visual acuity measurements, as noted earlier.
+
+The scale parameter $\sigma$ is estimated to be equal to 5.98.
+
+The estimated power coefficient of the variance function, 0.260, is very close to the value of 0.252 obtained for model M9.3 fitted in Panel R9.3.
+
+indicates an increasing variability of the measurements over time.
+
+```{r}
+## (a) The marginal variance-covariance structure
+fm12.1vcov <- # Ri
+  getVarCov(fm12.1, individual = "2")
+nms <- c("4wks", "12wks", "24wks", "52wks")
+dnms <- list(nms, nms) # Dimnames created
+dimnames(fm12.1vcov) <- dnms # Dimnames assigned
+
+print(fm12.1vcov)
+
+print(cov2cor(fm12.1vcov), # Ci:(12.4)
+      corr = TRUE, stdevs = FALSE)
+## (b) Test of independence vs. compound-symmetry correlation structure
+anova(fm9.2, fm12.1) # M9.2 \in M12.1
+```
+
+In addition, we test the hypothesis about the need of compound-symmetry correlation in the model.
+
+Specifically, in Panel R12.3a, we use the `getVarCov()` function (Sect. 11.6) to obtain an estimate of the variance-covariance matrix.
+
+The argument `individual="2"` indicates that we request the matrix for subject "2", for whom all four post-randomization measurements are available.
+
+The resulting correlation structure is obtained by transforming the variance-covariance matrix into a correlation matrix with the use of the `cov2cor()` function (Sect. 3.2.3).
+
+when printing the latter matrix, we use arguments `corr=TRUE` and `stdevs=FALSE`.
+
+The first argument chooses the format of the printout suitable for a correlation matrix,
+
+while the second one suppresses the display of the standard deviations, which are irrelevant for a correlation matrix.

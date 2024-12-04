@@ -1,0 +1,819 @@
+---
+title: "Chapter 11"
+author: "Randy"
+date: "9/12/2021"
+output:
+  pdf_document: default
+  latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("tidyverse")
+library("here")
+library("janitor")
+library("knitr")
+library("tinytex")
+library("bookdown")
+library("nlme")
+library("nlmeU")
+library("emmeans")
+```
+
+# Chapter 9 ARMD Trial: Linear Model with Heterogeneous Variance
+
+In the current chapter, we allow for heterogeneous variance, but we keep the assumption of independence. Note that the results of the exploratory analysis indicate that the assumption is most likely incorrect.
+
+## 9.2 A Linear Model with Independent Residual Errors and Heterogeneous Variance
+
+$$
+VISUAL_{it} = \beta_{0t} + \beta_1 \times VISUAL0_i + \beta_{2t} \times TREAT_i + \epsilon_{it} \ \ \ \ (9.1)
+$$
+
+Note that the exploratory analysis of the ARMD data (Sect. 3.2.2) indicated that the variances of the visual acuity measurements, obtained at different timepoints, differed.
+
+we allow for heteroscedasticity: $\epsilon_{it} \sim \mathcal N(0,\ \sigma^2_t) \ \ \ (9.2)$
+
+$$
+Var(VISUAL_{it}) \equiv \sigma_t^2 = 
+\begin{cases}
+\sigma^2 & for\ t=1\ (4\ weeks)\\
+\sigma^2\delta_2^2 & for\ t=2\ (12\ weeks)\\
+\sigma^2\delta_3^2 & for\ t=3\ (24\ weeks)\\
+\sigma^2\delta_4^2 & for\ t=4\ (52\ weeks)
+\end{cases}
+$$
+
+where $\delta_2 \equiv \sigma_2/ \sigma_1$, $\delta_3 \equiv \sigma_3/ \sigma_ 1$, and $\delta_4 \equiv \sigma_ 4/\sigma_ 1$. Thus, parameters $\delta_2$, $\delta_3$, and $\delta_4$, are the ratios of standard deviations (SDs) of visual acuity measurements for weeks 12, 24, and 52, relative to SD at week 4 (the reference level).
+
+Note that, according to (9.3), the scale parameter $\sigma$ can be interpreted as SD at 4 weeks.
+
+### 9.2.1 Fitting the Model Using the gls() Function
+
+To allow for heterogeneous variance, we set the **weights argument** to an object of the `varIdent` class, created with the help of the **varIdent()** constructor function. The `varIdent` class represents a variance structure with different variances for different strata.
+
+In our case, the strata are defined by the levels of the factor **time.f**, which is indicated using the formula **\~1\|time.f** in the form argument of the **varIdent()** constructor function.
+
+```{r}
+## (a) Selected results for the model 
+## with timepoint-specific variances
+data(package = "nlmeU", armd)
+lm1.form <- # See also R6.1
+  formula(visual ~ -1 + visual0 + time.f + treat.f:time.f)
+
+# Var. function; <delta>-group
+fm9.1 <- # M9.1
+ gls(lm1.form,
+     weights = varIdent(form = ~1|time.f), 
+     data = armd)
+summary(fm9.1)
+str(fm9.1)
+
+## the delta1 = 1, delta2, delta3, delta4
+## for the variancec structure
+fm9.1$modelStruct$varStruct 
+
+(intervals(fm9.1, which = "var-cov")) 
+
+## (b) REML-based LR test of homoscedasticity. 
+## The object fm6.1 was created in Panel R6.3
+# anova(fm6.1, fm9.1) # M6.1 \in M9.1
+```
+
+By referring to the varStruct component of the modelStruct component of the model-fit object (Table 8.2a), we display the estimated values of the $\delta$ variance-function coefficients.
+
+-   the estimates indicate an increasing variability of outcome measurements in time.
+
+-   by using the `intervals()` function (Table 8.2a), we obtain the estimates and 95% confidence intervals for the parameters $\delta$ and $\sigma$ .
+
+-   the 95% confidence intervals for the variance function coefficients slightly overlap, but suggest timepoint-specific variances.
+
+-   Note that both models differ only by their variance structure and were fitted using the `gls()` function with the default estimation method, i.e., REML.
+
+-   there is a statistically significant difference, the data provide evidence for heterogeneous variances of the outcome.
+
+-   in further modeling, we will therefore assume heteroscedasticity
+
+## 9.3 Linear Models with the `varPower(·)` Variance-Function
+
+The mean structure for all models introduced in this section is the same as the one specified in (9.1). The models differ with respect to the assumed form of the variances of the residual errors.
+
+M9.2 with strata for different groups
+
+$$
+\sigma_{it} = \sigma \lambda_{it} = \sigma \lambda (\delta;\ TIME_{it}) 
+= \sigma (TIME_{it})^\delta \ \ \ \ \ (9.4)
+$$
+
+the `varPower(·)` variance function from the $<\delta>$-group (Table 7.2), with $\delta \equiv \delta$, variance covariate $TIME_{it}$, and no strata.
+
+It specifies that the variance is a power function of the time (in weeks), at which the visual acuity measurement was taken.
+
+M9.3 assmues the power coefficient depends on treatment:
+
+$$
+\sigma_{it} = \sigma \lambda _{it} = \sigma \lambda\{(\delta_1,\ \delta_2);\  TIME_{it}\} = 
+\begin{cases}
+\sigma(TIME_{it})^{\delta_1} & for Active \\
+\sigma(TIME_{it})^{\delta_2} & for Placebo 
+\end{cases}
+\ \ \ \ \ (9.5)
+$$
+
+M9.4 specifies that the variances are a power function of the mean value:
+
+$$
+\sigma_{it} = \sigma \lambda_{it} = \sigma \lambda(\mu_{it},\ \delta) = \sigma (\mu_{it} )^\delta\ \ \ \ \ (9.6)
+$$
+
+where $\mu_{it} \equiv \beta_{0t} + \beta_1 \times VISUAL_{0i} + \beta_{2t} \times TREAT_i$ is the predicted (mean) value of $VISUAL_{it}$, as implied by (9.1). The function $\lambda(·)$, used in (9.6), is an example of the `varPower(·)` variance function from the $<\delta,\ \mu>$-group (Table 7.3), with $\pmb \delta \equiv \delta$ and strata.
+
+Finally, M9.5 assumes a constant coefficient of variation, i.e., it assumes that SDs of the visual acuity measurements are proportional to the mean values:
+
+$$
+\sigma_{it} = \sigma \lambda_{it} = \sigma \lambda (\mu_{it}) = \sigma \mu_{it} \ \ \ \ (9.7)
+$$
+
+The function $\lambda(·)$, used in (9.7), is similar to the one used in (9.6), but with $\delta \equiv 1$. Thus, it is an example of the `varPower(·)` variance function from the $<\mu>$-group (Table 7.4).
+
+Note that, according to (9.7), $\sigma_{it}/\mu_{it} = \sigma$ , i.e., the scale parameter can be interpreted as a coefficient of variation, constant for all timepoints.
+
+## 9.3.1 Fitting the Models Using the gls() Function
+
+we fit the models, M9.2--M9.5, which have the same mean structure as model M9.1, but employ the variance functions from different groups.
+
+In addition, we illustrate model selection using the REML-based LR tests and AIC.
+
+All models are fitted using the generic function update() to modify the weights argument.
+
+```{r "R9.2"}
+## (a) Models with various variance functions
+fm9.2 <- ## M9.2 from M9.1
+  update(fm9.1, 
+         ## (9.4), <d>-group
+         weights = varPower(form = ~time)) 
+
+fm9.3 <- # M9.3 from M9.1
+  update(fm9.1,
+         ## (9.5), strata=treat.f
+         weights = varPower(form = ~time | treat.f))
+
+fm9.4 <- # M9.4 from M9.1
+  update(fm9.1, 
+         ## (9.6), <d, m>-group
+         weights = varPower())
+
+fm9.5 <- ## M9.5 from M9.1
+  update(fm9.1,
+         ## (9.7), <\mu>-group
+         weights = varPower(fixed = 1)) 
+
+
+fm9.1$modelStruct$varStruct
+fm9.2$modelStruct$varStruct
+fm9.3$modelStruct$varStruct
+fm9.4$modelStruct$varStruct
+fm9.5$modelStruct$varStruct
+
+(intervals(fm9.1, which = "var-cov")) 
+(intervals(fm9.2, which = "var-cov")) 
+(intervals(fm9.3, which = "var-cov")) 
+(intervals(fm9.4, which = "var-cov")) 
+(intervals(fm9.5, which = "var-cov")) 
+
+## (b) Test of the variance structure: 
+## equal power of time for the two treatments
+## M9.2 nested M9.3
+anova(fm9.2, fm9.3) 
+
+
+## (c) Test of the variance structure: 
+## power of time vs. timepoint-specific variances
+# M9.2 nested M9.1
+anova(fm9.2, fm9.1) 
+
+
+## (d) Test of the variance structure: 
+## power of the mean value equal to 1
+## M9.5 nested M9.4
+anova(fm9.5, fm9.4) 
+
+
+## (e) AIC for models M9.1– M9.5
+## Nonnested models
+AIC(fm9.1, fm9.2, 
+    fm9.3, fm9.4, fm9.5)
+ # Smaller AIC better fit
+```
+
+#### 9.3.1.1 Inference and Model Selection
+
+-   model M9.2 is nested both in M9.1 and in M9.3.
+
+-   Using the LR test based on models M9.2 and M9.3 allows testing the hypothesis that the power variance function for the two treatment groups is actually the same.
+
+-   note that the models have the same mean structure and that the test is based on the restricted likelihood, as required when the LR test is applied to verify hypotheses about variance-function parameters
+
+-   a common-power variance function of the TIME covariate can be used for both treatment groups
+
+We may now ask the question whether the common-power variance function can be used as a more parsimonious representation of the variance structure of the data.
+
+-   The null hypothesis for M9.1 and M9.2$\sigma^2_1 = 4^\delta\sigma^2,\ \sigma^2_2 = 12^\delta\sigma^2,\ \sigma^2_3 = 24^\delta\sigma^2,\ and\ \sigma^2_4 = \sigma ^2 52^\delta$
+
+-   It suggests that the fit of model M9.2, measured by the value of the restricted log-likelihood, is not statistically significantly worse than the fit of model M9.1.
+
+-   Hence, model M9.2, which specifies that the variance is a power function of the time (in weeks), offers an adequate description of the variance structure of the data.
+
+-   the REML-based LR test carried out using the likelihoods for models M9.4 and M9.5.
+
+-   The test verifies the null hypothesis, implied by model M9.5, that, if we assume a variance function in the form of a power function of the mean value, the power coefficient is equal to 1.
+
+-   M9.2 seems to offer an adequate description of variance structure of the data.
+
+-   on the other hand, of models M9.4 and M9.5, the former is more appropriate.
+
+-   which of the models M9.2 or M9.4 fits the data better.
+
+-   the models are not nested, so we cannot compare them with the use of the LR test.
+
+-   toward this aim, we need to apply the information criteria
+
+-   thus, based on the information criterion, model M9.2 offers the most adequate description of the data.
+
+-   model M9.3, as it has just been mentioned, is not the best model in a statistical sense, but it nicely illustrates several features related to the use of variance functions like, e.g., the use of a strata for the variance parameters, which are not present in the other considered models.
+
+$$
+Var(VISUAL_{it}) = \sigma^2_t \approx (6 \times TIME_{it}^{0.25})^2 = 36 \times \sqrt{TIME_{it}}
+$$
+
+-   There are virtually no differences in the estimates of the fixed-effects coefficients for models M9.1--M9.3. In this respect, model M9.5 is the most distinct one.
+
+-   All the models suggest an increasing, negative effect of the "active" treatment compared to placebo.
+
+-   The estimated standard errors of the fixed-effects coefficients vary more noticeably between all the models.
+
+-   This is related to the differences in the assumed residual-variance structure; as it was noted in Sect. 7.8.2, the precision of estimates of $\beta$ depends on the (correct) specification of the structure.
+
+```{r "R9.3"}
+## (a) Model M9.2: Power-of-time variance function
+mSt2 <- fm9.2$modelStruct # Model structure
+vF2 <- mSt2$varStruct # Variance function:(9.4)
+summary(vF2) # Summary: delta
+summary(fm9.2)$sigma # sigma
+
+## (b) Model M9.3: Power-of-time with treatment-specific coefficients
+mSt3 <- fm9.3$modelStruct # Model structure
+vF3 <- mSt3$varStruct # Variance function:(9.5)
+summary(vF3) # Summary: d1, d2
+
+coef(vF3) # d1, d2
+formula(vF3) # Variance function formula
+varWeights(vF3)[3:10] # Weights for two subjects
+
+```
+
+### 9.3.2 Model-Fit Evaluation
+
+we know that the model does not offer a proper description of the data, because it ignores the within-subject correlation between the visual acuity measurements.
+
+we will assess the fit of the model using residual plots.
+
+```{r "R9.4", fig.height=5, fig.width=5}
+## (a) Raw residuals
+library(lattice)
+plot(fm9.2, # Fig. 9.1a
+     resid(., type = "response") ~ fitted(.)) # Raw vs. fitted
+plot(fm9.2, # Raw vs. time (not shown)
+     resid(., type = "response") ~ time) # (See Fig. 9.1a)
+
+bwplot(resid(fm9.2) ~ time.f, # Fig. 9.1b
+       pch = "|", data = armd) # Raw vs. time.f.
+
+
+## (b) Pearson residuals
+plot(fm9.2, # Fig. 9.1c
+     resid(., type = "pearson" ) ~ fitted(.)) # Pearson vs. fitted
+plot(fm9.2, # vs. time (not shown)
+     resid(., type = "pearson") ~ time) # (See Fig. 9.1c)
+bwplot( # Fig. 9.1d
+  resid(fm9.2, type = "pearson") ~ time.f, # Pearson vs. time.f
+  pch = "|", data = armd)
+
+
+## (c) Scale-location plots
+plot(fm9.2, # Fig. 9.2a
+     ## use the scale-location
+     sqrt(abs(resid(., type = "response"))) ~ fitted(.),
+     type = c("p", "smooth"))
+plot(fm9.2, # Fig. 9.2b
+     sqrt(abs(resid(., type = "pearson"))) ~ fitted(.),
+     type = c("p", "smooth"))
+```
+
+-   in Panel R9.4a scatterplots of the residuals versus fitted values and versus the time covariate are created with the help of the plot() function.
+
+-   the first of the plots is shown in Fig. 9.1a.
+
+-   an asymmetric pattern, with large positive (negative) residuals present mainly for small (large) fitted values.
+
+-   we use the function bwplot() from the package lattice (Sect. 3.2.2) to create a box-and-whiskers plot of the residuals for each timepoint.
+
+-   in Panel R9.4b, we create corresponding plots of Pearson residuals (Sect. 7.5.1).
+
+-   the scatterplot of the residuals versus fitted values is shown in Fig. 9.1c.
+
+-   similarly to the plot of the raw residuals, it displays an asymmetric pattern.
+
+-   the box-and-whiskers plots of the Pearson residuals for each timepoint are shown in Fig. 9.1d.
+
+-   the plot for the raw residuals, shown in Fig. 9.2a, suggests a dependence between the residual variance and the mean value.
+
+-   however, this may be an artifact of the heteroscedasticity of the raw residuals, which was observed in Fig. 9.1b.
+
+-   thus, it might be better to look at the scale-location plot for the Pearson residuals.
+
+-   the plot is shown in Fig. 9.2b; it does not indicate any clear trend in the residual variance.
+
+-   Figure 9.3 presents a scatterplot matrix of the Pearson residuals for all four measurement occasions.
+
+-   The figure was constructed using the `splom()` function for the data for 188 subjects with all four post-randomization visual acuity measurements.
+
+-   The 95% confidence ellipses were added using the `ellipse()` function from the ellipse package.
+
+-   The scatterplots clearly show a violation of the assumption of the independence of observations: residuals for different measurement occasions are correlated.
+
+-   The correlation coefficient decreases with the increasing distance between the timepoints.
+
+-   Of course, some caution is needed in interpreting the strength of correlation, because the estimated residuals are correlated even if the independence assumption holds
+
+```{r}
+resid9.2 <- resid(fm9.2, type = "response")
+presid9.2 <- resid(fm9.2, type = "pearson")
+broom.mixed::augment(fm9.2, type.residuals = "pearson")
+head(broom.mixed::augment(fm9.2, armd))
+## the pearson residuals does not work in the augment function
+## need to use the resid() or residuals() function
+head(broom.mixed::augment(fm9.2, armd, type.residuals="pearson"))
+```
+
+# Chapter 11
+
+The primary tool to fit the models is the gls() function from the nlme package.
+
+## 11.2 Correlation-Structure Representation: The `corStruct` Class
+
+### 11.2.1 Correlation-Structure Constructor Functions
+
+Note that all of these objects also inherit from the corStruct class.
+
+Of course, this applies to objects created by other constructor functions as well.
+
+A list of correlation structures available in the package `nlme` can be obtained from `help` system by issuing the `?corClasses` command
+
+```{r}
+library(nlme)
+library(nlmeU)
+# ?corClasses
+```
+
+Correlation-structure constructors are primarily used to specify correlation structures, with the help of the `correlation` argument, for the model-fitting functions `gls()`, and `lme()`. They also allow exploring the details of correlation structures, to choose user-defined initial values, or to fix values of correlation parameters in the numerical optimization procedures.
+
+#### 11.2.1.1 Arguments of the Correlation-Structure Constructor Functions
+
+three arguments are available in R: value, form, and fixed
+
+For the spatial correlation structures (see Table 10.1), apart from the value, form, and fixed arguments, two additional arguments are available: nugget and metric.
+
+## 11.3 Inspecting and Modifying Objects of Class corStruct
+
+### 11.3.1 Coefficients of Correlation Structures
+
+-   Similar to the case of variance functions (Sect. 8.3), the primary tool to extract or modify coefficients of a correlation-structure object is the generic `coef()` function.
+
+The primary arguments of the coef.corStruct method are object and unconstrained. The argument object indicates an object inheriting from the particular corStruct class.
+
+## 11.3.2 Semivariogram
+
+the generic function `Variogram()` that can be applied to objects inheriting from the **corSpatial** class.
+
+Note that the function can be also applied to objects of other classes, including, for instance, `gls` and `lme`.
+
+Its arguments depend on the class of the object. The information about the arguments used for the *corSpatial* class is obtained by issuing the command `?Variogram.corSpatial`.
+
+```{r "R11.1", fig.height=5, fig.width=5}
+# ?Variogram.corSpatial
+## Calculate Semi-variogram for a corSpatial Object: 
+## This method function calculates the semi-variogram values
+## corresponding to the model defined in FUN, 
+## using the estimated coefficients corresponding to object, 
+## at the distances defined by distance.
+
+## The values of the parameters are specified using 
+## the value argument of the corExp() constructor function. 
+## 
+## Additionally, a one-dimensional position variable tx, 
+## indicated in the argument form, is used. 
+## The elements of the vector tx are chosen in such a way
+##  that their differences cover the desired range of 
+##  values from values very close to zero up to 0.8. 
+
+## Auxilary vector
+tx <- c(0, 10^-2, 0.8) 
+## corExp object defined
+## range rho:(10.16), 
+## nugget rho_0:(10.18)
+cX <- corExp(value = c(1, 0.2), 
+             form = ~tx,
+             # Nugget defined
+             nugget = TRUE) 
+# ?corExp
+## Exponential Correlation Structure
+Dtx <- data.frame(tx)
+
+## corExp object initialized
+(cXi <- Initialize(cX, 
+                   ## data has to be the data.frame
+                   data = Dtx))
+## The resulting correlation matrix can be printed 
+## with the use of the function
+corMatrix(cXi)
+# View(cXi)
+## tx diffs: 2-1, 3-1, 3-2
+(getCovariate(cXi)) 
+
+## Semi-variogram created ...
+## Using the function Variogram(), 
+## the semivariogram is calculated and stored 
+## in the object Vrg. 
+## The object is subsequently used to plot the (theoretical) semivariogram.
+Vrg <- Variogram(cXi) 
+plot(Vrg, 
+     ## ... and plotted. Fig. 10.1a
+     smooth = FALSE, 
+     type = "l")
+
+## Data for correlation function
+corFunDt <- data.frame(dist = Vrg$dist,
+                       corF = 1 - Vrg$variog)
+## Corr function plotted with ...
+# ... traditional graphics ...
+plot(corFunDt, 
+     type = "l", 
+     ylim = c(0, 1)) 
+# ... and xyplot(). Fig. 10.1b
+xyplot(corF ~ dist, 
+       data = corFunDt, type = "l")
+```
+
+-   `Variogram()` function to obtain a semivariogram for the *corExp* correlation structure.
+
+### 11.3.3 The corMatrix() Function
+
+To obtain the correlation matrix represented by an initialized object of *corStruct* class, the generic function `corMatrix()` is used.
+
+The arguments of the function are **object** as `corStruct`, **covariate**, and **corr**.
+
+-   If the **object** is not initialized, the argument **covariate** is used to provide a covariate vector (matrix), or a list of covariate vectors (matrices), at which the values of the correlation matrix are to be evaluated.
+
+-   The argument **corr** is a logical value. By default, `corr=TRUE` and indicates that the function should return the correlation matrix or a list of correlation matrices, represented by the *corStruct*-class object.
+
+-   If `corr=FALSE`, the function returns a transpose of the inverse of the square root of the correlation matrix (or a list of such matrices).
+
+-   That is, if $\pmb C = \pmb U' \pmb U$ is a correlation matrix, the use of `corr = FALSE` yields $(\pmb U^{-1})'$.
+
+### 11.4.1 Compound Symmetry: The corCompSymm Class
+
+-   Specifies the compound-symmetry function with a constant correlation of 0.3.
+
+-   The `Initialize()` function initializes the corCompSymm object for the hypothetical data set.
+
+-   As a result, the same correlation structure, though with different dimensions, is obtained for both subjects.
+
+-   Note that, had we provided the position variable by specifying `corCompSymm(0.3, ~occ|subj))`, the result would not have changed, because, **by default, `corCompSymm()` ignores any position variable**.
+
+-   This is understandable, because **the compound-symmetry correlation structure assumes a constant correlation coefficient between any two observations**.
+
+-   Note that the obtained constrained form, value of the coefficients is equal to $\log(1/3 + 0.3) - \log(1 - 0.3)$, corresponding to the modified **Fisher's z-transform (10.35)** of $\rho = 0.3$.
+
+```{r "R11.2&3"}
+# Two subjects
+subj <- rep(1:2, each = 4)
+# Four observations each
+occ <- rep(1:4, 2) 
+# Coordinates
+loc1 <- rep(c(0, 0.2, 0.4, 0.8), 2) 
+loc2 <- c(0, 0.2, 0.4, 0.8, 0, 0.1, 0.2, 0.4)
+df0 <- # Hypothetical data frame
+  data.frame(subj, occ, loc1, loc2)
+(df <- # Occ = 3 for subj.2 deleted
+    subset(df0, subj != 2 | occ != 3))
+
+cs <- # Object defined...
+  corCompSymm(## the value for CompSymm rho
+              value = 0.3, 
+              ## nested in subj
+              form = ~1|subj)
+cs <- Initialize(cs, df) # ... initialized
+# Constrained coefficient
+coef(cs, unconstrained = FALSE) 
+# Unconstrained = log((1/3+.3)/(1-.3))
+coef(cs) 
+# Positions in series
+getCovariate(cs) 
+
+# Corr. matrix displayed
+corMatrix(cs, corr = FALSE) 
+corMatrix(cs)
+```
+
+### 11.4.2 Autoregressive Structure of Order 1: The corAR1 Class
+
+By applying to the object the function `coef()`, with the `unconstrained =  FALSE` argument, we obtain the value of the defining correlation coefficient.
+
+Using the argument `unconstrained=TRUE`, we obtain the coefficient on the unconstrained scale, i.e., the value of $\log(1.3/0.7)$, resulting from **Fisher's z-transform**
+
+The last command in Panel R11.4 illustrates the back-transformation leading to the correlation matrix
+
+```{r}
+## Uninitialized corAR1 struct -------------------------------------------------
+cs1 <- corAR1(0.3, form = ~tx) 
+# str(cs1)
+## Constrained coefficient
+coef(cs1, unconstrained = FALSE) 
+# Unconstrained = log((1+.3)/(1-.3))
+coef(cs1) 
+
+# A covariate with values 1, 2, 3, 4
+tx <- 1:4 
+# Corr(Ri) of uninitialized object
+corMatrix(cs1, covariate = tx)
+
+
+## Initialize corAR1 -----------------------------------------------------------
+df2 <- data.frame(tx) # An auxiliary data frame
+cs1i <- Initialize(cs1, data = df2)
+# corAR1 matrix displayed
+corMatrix(cs1i) 
+
+## the object chL contains the coefficients of 
+## the transpose of the inverse of 
+## the square root of the correlation matrix 
+(chL <- # Cholesky factor L =(U')^{-1}
+    corMatrix(cs1i, corr = FALSE))
+
+solve(t(chL) %*% chL)
+```
+
+A word of caution is worth issuing with regard to the use of serial correlation classes other than corCompSymm.
+
+For these classes, specifying the form=\~1\|g argument for the appropriate constructor function indicates the use of the orde of the observations in the group as the position index.
+
+When data are balanced, i.e., when all subjects have got all measurements, or when they reveal monotone missingness patterns (Sect. 3.2.1), this will work fine.
+
+However, if, for some subjects, intermittent measurements are missing, the use of the observation order can result in the wrong correlation structure.
+
+To correctly specify this value, the occ variable should be used as the position variable using the form= occ \| subj argument, as shown in the first corAR1() statement of the part (b) of Panel R11.5.
+
+Note that, for data with measurement timepoints common to all subjects, this caution is required only for nonmonotone missing data patterns.
+
+Nevertheless, in case of the constructor functions for serial correlation classes other than corCompSymm, it is prudent to always use a position variable, which reflects the proper positions of the observations in a sequence for each group (subject), in the form arg.
+
+```{r}
+## (a) Not a recommended syntax
+car <- # Not-recommended syntax ...
+  corAR1(value = 0.3, form = ~1|subj)
+carI <- Initialize(car, df) # corAR1 class object initialized
+getCovariate(carI) # Position=order of observations for a subject
+corMatrix(carI)[[1]] # Correct matrix for the 1st subject
+corMatrix(carI)[[2]] # Incorrect matrix for the 2nd subject
+
+## (b) Recommended syntax
+car1 <- corAR1(value = 0.3, form = ~occ|subj) # Recommended syntax
+car1 <- Initialize(car1, df) # corAR1 classs object initialized
+getCovariate(car1) # Correct positions based on the occ variable
+corMatrix(car1)[[2]] # Correct matrix for the 2nd subject
+```
+
+```{r}
+## (a) Euclidean metric
+ceE <- corExp(value=1, 
+              # Euclidean metric
+              form= ~loc1 + loc2 | subj)
+ceE <- Initialize(ceE, df)
+corMatrix(ceE) # List with corr matrices for both subjects
+
+## (b) Manhattan metric
+ceM <- # Manhattan metric
+  corExp(1, ~ loc1 + loc2 | subj, 
+         metric = "man")
+ceM <- Initialize(ceM, df)
+corMatrix(ceM)[[1]] # Corr matrix for the 1st subject
+
+## (c) Nugget effect
+ceEn <- # nugget = 0.2
+  corExp(c(1, 0.2), 
+         ~ loc1 + loc2 | subj, 
+         nugget = TRUE)
+ceEn <- Initialize(ceEn, df)
+coef(ceEn, unconstrained=FALSE) 
+corMatrix(ceEn)[[1]] # Corr matrix for the 1st subject
+```
+
+## 11.5 Using the gls() Function
+
+The function most frequently used in R to fit LMs for correlated data is the gls() function from the nlme package.
+
+It allows fitting models, defined by (10.1)--(10.5), with various forms for the variance-covariance matrix, Ri, of the within-group residual errors.
+
+The main arguments of the function gls(), i.e., model, data, subset, na.action, and method were introduced in Sect. 5.4 in the context of LMs for independent observations with homogeneous variance.
+
+In Sect. 8.4, we described an additional argument, namely, weights, which allows specifying the variance function for LMs for independent observations with heterogeneous variances, which were introduced in Chap. 7.
+
+We illustrated the use of these arguments in Chaps. 6 and 9. Note that all these arguments play essentially the same role and have the same syntax for the models introduced in this chapter.
+
+In the context of LMs for correlated data, the additional important argument of the gls() function is correlation.
+
+The argument specifies an object that inherits from the *corStruct* class, which defines the correlation structure. Thus, a typical use of the argument is of the form `correlation= corStruct(form=formula)`, where *corStruct* is a correlation-structure constructor function (Table 10.1),
+
+while formula is a one-sided formula (Sect. 11.2), which indicates the position and grouping variables used in defining the correlation structure.
+
+The default value of the argument is `correlation=NULL`, which implies uncorrelated residual errors. This argument can prove useful when user defined initial values need to be assigned to a vector of $\theta_R$ parameters.
+
+Note that the information about the grouping of the data, relevant in the context of the models considered in this chapter, can be introduced into a `gls()`-function call in two ways.
+
+The preferred, transparent way is by specifying a formula (Sect. 11.2), indicating the grouping factors, in the correlation-structure constructor function used in the correlation argument.
+
+In this way, the grouping of the data can be directly inferred from the definition of the model.
+
+An alternative is to use an object of *groupedData* class in the data argument. As mentioned in Sect. 2.6, the *groupedData* class has some limitations.
+
+Also, in this way, the assumed grouping of the data is not reflected by any means in the definition of the model.
+
+Therefore, the use of the *groupedData* objects is not recommended.
+
+![](figure/lmmur_t_11.1.png "Independent Measurements")
+
+# Chatper 12 ARMD Trial: Modeling Correlated Errors for Visual Acuity
+
+## 12.2 The Model with Heteroscedastic, Independent Residual Errors Revisited
+
+$$
+VISUAL_{it} = \beta_{0t} + \beta_1 \times VISUAL0_i + \beta_{2t} \times TREAT_i + \epsilon_{it} \ \ \ \ (12.1)
+$$
+
+$$
+\mathcal R_i = \sigma^2 \Lambda_i C_i \Lambda_i \ \ \ \ (12.2)
+$$
+
+with $C_i \equiv I_4$
+
+We consider initially models with the same mean structure as the one defined in (12.1), but with different variance-covariance (correlation) structures.
+
+
+$$
+\Lambda_i \equiv 
+\begin{pmatrix}
+(Time_{i1})^\delta & 0 & 0 & 0\\
+0 & (Time_{i2})^\delta & 0 & 0\\
+0 & 0 & (Time_{i3})^\delta & 0\\
+0 & 0 & 0 & (Time_{i4})^\delta  
+\end{pmatrix}
+\ \ \ \ \ (12.3)
+$$
+
+## 12.2.1 Empirical Semivariogram
+
+It is worth noting that, in the ARMD trial, time differences for all possible six pairs of timepoints are different.
+
+we can estimate the semivariogram to calculate correlation coefficients between Pearson residuals for every pair of timepoints, separately.
+
+Note that, when applying the function to a model-fit object of class gls, many additional arguments, above those mentioned in Sect. 11.3.2, are available.
+
+In particular, the argument robust can be used.
+
+If `robust=TRUE`, the semivariogram is estimated using the robust estimator, given in (10.40).
+
+By default, `robust=FALSE`, and the semivariogram function is estimated using the estimator defined in (10.39).
+
+This is the case for the `Variogram()`-function call used in Panel R12.1a.
+
+```{r "R12.1", fig.height=5, fig.width=5}
+## (a) Per time difference
+(Vg1 <- Variogram(fm9.2, form = ~ time | subject))
+## Fig.12.1a
+plot(Vg1, smooth = FALSE, xlab = "Time difference")
+
+## (b) Per time lag
+(Vg2 <- Variogram(fm9.2, form = ~tp | subject))
+## smooth argument needs to be FALSE
+plot(Vg2, smooth = FALSE, xlab = "Time Lag")
+```
+
+-   A more appropriate structure might be, e.g., an autoregressive process of order 1 (see Table 10.1).
+
+## 12.3 A Linear Model with a Compound-Symmetry Correlation Structure
+
+### 12.3.1 Model Specification
+
+$$
+VISUAL_{it} = \beta_{0t} + \beta_1 \times VISUAL0_i + \beta_{2t} \times TREAT_i + \epsilon_{it} \ \ \ \ (12.1)
+$$
+
+$$
+\mathcal R_i = \sigma^2 \Lambda_i C_i \Lambda_i \ \ \ \ (12.2)
+$$
+
+We assume that the mean structure of the model, specified in this section and labeled as M12.1, is the same as the one implied by (12.1). On the other hand, we assume that the marginal variance-covariance matrix is of the form defined in (12.2), with $Lambda_i$ given in (12.3)
+
+$$
+\Lambda_i \equiv 
+\begin{pmatrix}
+(Time_{i1})^\delta & 0 & 0 & 0\\
+0 & (Time_{i2})^\delta & 0 & 0\\
+0 & 0 & (Time_{i3})^\delta & 0\\
+0 & 0 & 0 & (Time_{i4})^\delta  
+\end{pmatrix}
+\ \ \ \ \ (12.3)
+$$
+
+and
+
+$$
+\pmb C_i \equiv
+\begin{pmatrix}
+1 & \rho &  \rho &  \rho \\
+\rho &  1 & \rho &  \rho \\
+\rho &  \rho &  1 & \rho \\
+\rho &  \rho &  \rho &  1
+\end{pmatrix}
+\ \ \ \ \ (12.4)
+$$
+
+As a result, we obtain a compound-symmetry correlation structure and a heterogeneous compound-symmetry variance-covariance structure.
+
+```{r}
+## (a) Fitting model M12.1
+lm1.form <- # (12.1)
+  formula(visual ~ -1 + visual0 + time.f + treat.f:time.f)
+
+fm12.1 <- # M12.1
+ gls(lm1.form, weights = varPower(form = ~time),
+ correlation = corCompSymm(form = ~1|subject),
+ data = armd)
+
+summary(fm12.1)
+## (b) 95% CIs for the variance-covariance parameters
+intervals(fm12.1, which = "var-cov") 
+```
+
+## 12.3.2 Syntax and Results
+
+the variance-covariance matrix $\pmb R_i$ using the *varPower* class of variance functions and *corCompSymm* class of correlation functions, described in Sects. 8.2 and 11.4.1, respectively.
+
+in Panel R12.2a, we use the weights argument combined with the `varPower()` constructor function and the correlation argument combined with the `corCompSymm()` constructor function.
+
+The `correlation = corCompSymm(form = ~1|subject)` argument indicates that we use the same correlation coefficient for different observations for each level of the subject factor.
+
+Thus, the default value, i.e., method="REML", is used (Sect. 5.4).
+
+This is because, at this point, we focus on the estimation of the variance-covariance structure of the data.
+
+The results indicate that, according to the assumed compound-symmetry correlation structure, the correlation coefficient of any two visual acuity measurements obtained for the same patient $\rho$ is equal to 0.573.
+
+The 95% CI for the correlation coefficient confirms that there is a nonnegligible correlation between the visual acuity measurements, as noted earlier.
+
+The scale parameter $\sigma$ is estimated to be equal to 5.98.
+
+The estimated power coefficient of the variance function, 0.260, is very close to the value of 0.252 obtained for model M9.3 fitted in Panel R9.3.
+
+indicates an increasing variability of the measurements over time.
+
+```{r}
+## (a) The marginal variance-covariance structure
+fm12.1vcov <- # Ri
+  getVarCov(fm12.1, individual = "2")
+nms <- c("4wks", "12wks", "24wks", "52wks")
+dnms <- list(nms, nms) # Dimnames created
+dimnames(fm12.1vcov) <- dnms # Dimnames assigned
+
+print(fm12.1vcov)
+
+print(cov2cor(fm12.1vcov), # Ci:(12.4)
+      corr = TRUE, stdevs = FALSE)
+## (b) Test of independence vs. compound-symmetry correlation structure
+anova(fm9.2, fm12.1) # M9.2 \in M12.1
+```
+
+In addition, we test the hypothesis about the need of compound-symmetry correlation in the model.
+
+Specifically, in Panel R12.3a, we use the `getVarCov()` function (Sect. 11.6) to obtain an estimate of the variance-covariance matrix.
+
+The argument `individual="2"` indicates that we request the matrix for subject "2", for whom all four post-randomization measurements are available.
+
+The resulting correlation structure is obtained by transforming the variance-covariance matrix into a correlation matrix with the use of the `cov2cor()` function (Sect. 3.2.3).
+
+when printing the latter matrix, we use arguments `corr=TRUE` and `stdevs=FALSE`.
+
+The first argument chooses the format of the printout suitable for a correlation matrix,
+
+while the second one suppresses the display of the standard deviations, which are irrelevant for a correlation matrix.

@@ -1,0 +1,273 @@
+---
+title: "BIOS6643. L10 Model Building"
+cheauthor: "EJC"
+-- date: "" 
+header-includes:
+   - \usepackage{amsmath}
+   - \usepackage{float}
+output: pdf_document
+---
+
+\newcommand{\bi}{\begin{itemize}}
+\newcommand{\ei}{\end{itemize}}
+\newcommand{\itt}{\item}
+
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- -->
+
+
+```{r installp, echo = FALSE, eval=T, include=F}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(nlme)
+library(lme4)
+
+```
+
+# Exercise involving $\pmb G$ and $\pmb R$ matrices
+
+Consider a basic science experiment conducted where cell counts are measured at 4 time points for samples taken from individual subjects or animals.  A linear mixed model will be fit for the data (perhaps after log transformation), and fixed effects will be included for time, and treatment group as well as their interaction.  (To answer this question we do not need to know the specific form of $\pmb {X\beta}$.)  
+
+Determine the structure for $\pmb V_i$ if a random intercept for subjects will be included, plus an AR(1) structure for the error covariance matrix ($\pmb R_i$).  What does the combination of non-simple $\pmb R$ and $\pmb G$ allow you to do in modeling covariance that using only one cannot do?  Discuss in a few sentences.
+
+See solution in file "fig-sol-ex1-lab10.png" under *Files > ComputingLabs.*
+
+# FEV Study 
+
+## Description
+The data set gives characteristics of children patients with a diagnosis of Cystic Fibrosis (CF) who are patients at the Colorado Children’s Hospital. Data pull was conducted in Summer 2020. This dataset may only be used for BIOS6643. 
+
+VARIABLE DESCRIPTIONS:  
+id: patient ID	
+race: race	
+Genotypes1: mutation of copy one of the gene that codes for the CFTR protein
+Genotypes2: mutation of copy two of the gene that codes for the CFTR protein. 
+age: Age in years	
+gender	: gender
+fev: \% of predicted forced expiratory volume in 1 second
+
+- **Objectives** of the study included:
+  - Determine if fev values over time are larger on average for males than for females
+  - Determine if the rate of change of fev over time is different for males and females.
+
+## Selecting the mean structure
+
+```{r eval=T, echo = T, include=TRUE}
+#  Read in the data 
+
+##  Read in the data 
+dat <- read.csv("/Users/juarezce/Documents/OneDrive - The University of Colorado Denver/BIOS6643/BIOS6643_Notes/data/fev.csv",
+                header=TRUE)
+length(unique(dat$id)) ## number of individuals
+head(dat,3)
+summary(dat$age) ## age in years
+summary(dat$fev)
+
+
+######
+################################################################################################
+### selecting the mean form
+## --------------------------------------------------------------------------------------------
+
+ggplot(dat, aes(x = age, y = fev, group = id)) +
+    facet_wrap(~gender) +
+    geom_line(aes(color = gender), alpha = 0.3) +
+    geom_smooth(aes(group = 1), method="loess", color="black", se=FALSE) +
+    theme_classic() +
+    theme(legend.position = "top") +
+    ylab("Fev")
+
+## age as linear
+fit.lme.0 <- lme(fev ~ -1 + gender + age:gender, data=dat,
+                    random = ~ 1 | id,method="ML")
+summary(fit.lme.0)
+
+## adding quadratic terms of age
+fit.lme.1 <- lme(fev ~ -1 + gender  + age:gender + I(age*age):gender, 
+                 data=dat,
+                    random = ~ 1 | id,method="ML")
+summary(fit.lme.1)
+
+## adding cubic terms of age
+fit.lme.2 <- lme(fev ~ -1 + gender  + age:gender + I(age*age):gender +
+                   I(age*age*age):gender, data=dat,
+                    random = ~ 1 | id,method="ML")
+summary(fit.lme.2)
+
+## updating model - same as above
+## fit.lme.2 <- update(fit.lme.1, fev ~ -1 + gender  + age:gender + I(age*age):gender +
+##                   I(age*age*age):gender)
+
+anova(fit.lme.0, fit.lme.1, fit.lme.2)
+
+```
+
+
+## Preliminary covariance structure $\pmb G$
+
+```{r eval=T, echo = T, fig.height=3.7, include=T}
+################################################################################################
+### 
+
+
+################################################################################################
+### preliminary covariance G
+## --------------------------------------------------------------------------------------------
+
+fit.lm.0 <- lm(fev ~ -1 + gender  + age:gender + I(age*age):gender + 
+                 I(age*age*age):gender, data=dat)
+summary(fit.lm.0)
+
+## calculating residuals
+dat$resid <- residuals(fit.lm.0)
+head(dat)    
+
+ggplot(dat, aes(x = age, y = resid, group = id)) +
+    facet_wrap(~gender) +
+    geom_line(aes(color = gender), alpha = 0.3) +
+    geom_smooth(aes(group = 1), method="loess", color="black", se=FALSE) +
+    theme_classic() +
+    theme(legend.position = "top") +
+    ylab("residuals")
+
+ggplot(dat, aes(x = age, y = resid^2, group = id)) +
+    facet_wrap(~gender) +
+    geom_point(aes(color = gender), alpha = 0.3) +
+    geom_smooth(aes(group = 1), method="loess", color="black", se=FALSE) +
+    theme_classic() +
+    theme(legend.position = "top") +
+    ylab("Squared residuals")
+
+## model with quadratic random effects did not converge: adding "+ I(age*age)" to random effects
+fit.lme.3 <- lme(fev ~ -1 + gender  + age:gender + I(age*age):gender +
+                   I(age*age*age):gender, data=dat,
+                    random = ~ age  | id, method="ML")
+
+summary(fit.lme.2)
+summary(fit.lme.3)
+
+```
+
+## Residual covariance structure $\pmb R$
+
+```{r eval=T, echo = T, fig.height=3.7, include=T}
+################################################################################################
+### 
+
+## different variance for males and females
+fit.lme.4 <- lme(fev ~ -1 + gender  + age:gender + I(age*age):gender +
+                   I(age*age*age):gender, data=dat,
+                    random = ~ age  | id, method="ML", 
+                    weights = varIdent(form = ~ 1 | gender))
+summary(fit.lme.4)
+R.b.1 <- getVarCov(fit.lme.4,type="conditional",individual=1)   # R_1; first male
+R.b.2 <- getVarCov(fit.lme.4,type="conditional",individual=12)   # R_2; first female
+R.b.1
+R.b.1
+
+## allowing for AR(1) exp
+fit.lme.5 <- lme(fev ~ -1 + gender  + age:gender + I(age*age):gender +
+                   I(age*age*age):gender, data=dat,
+                    random = ~ age  | id, method="ML", 
+                   corExp(form = ~ age | id))
+summary(fit.lme.5)
+
+anova(fit.lme.3, fit.lme.4, fit.lme.5) 
+
+```
+
+
+## Model reduction 
+
+```{r eval=T, echo = T, include=T}
+## do we really random slopes? The variance of the random slopes, is not negligible (~1.8^2), so I would keep random slopes in
+
+
+## testing if the cubic terms are needed in the mean form
+fit.lme.5.1 <- lme(fev ~ -1 + gender  + age:gender + I(age*age):gender,
+                 data=dat,
+                 random = ~ age  | id, method="ML", 
+                 corExp(form = ~ age | id))
+summary(fit.lme.5.1)
+
+anova(fit.lme.5, fit.lme.5.1) ## we do seem to need cubic terms
+
+## testing if there is an interaction between age and gender
+fit.lme.5.2 <- lme(fev ~ -1 + gender  + age + I(age*age) + I(age*age*age),
+                 data=dat,
+                 random = ~ age  | id, method="ML", 
+                 corExp(form = ~ age | id))
+summary(fit.lme.5.2)
+anova(fit.lme.5, fit.lme.5.2) ## the trajectories of FEV are different for males and females
+
+
+```
+
+## Final model
+
+```{r eval=T, echo = T, fig.height=5, include=T}
+fit.lme.f.reml <- lme(fev ~ -1 + gender  + age:gender + I(age*age):gender +
+                   I(age*age*age):gender, data=dat,
+                    random = ~ age  | id, method="REML", 
+                   corExp(form = ~ age | id))
+
+summary(fit.lme.f.reml)
+## AR term: exp(-1/0.01645754)= 4.085217e-27
+
+beta.f.reml <- fixed.effects(fit.lme.f.reml)  #  beta
+sebeta.model.f.reml <-  sqrt(diag(fit.lme.f.reml$varFix))
+b.f.reml <- random.effects(fit.lme.f.reml)    #  posterior modes bi
+G.f.reml <- getVarCov(fit.lme.f.reml, type="random.effects")   #  G
+G.f.reml
+sigma2.f <- fit.lme.f.reml$sigma^2  # sigma^2
+R.f <- getVarCov(fit.lme.f.reml,type="conditional",individual=1)  #  R_i
+V.f <- getVarCov(fit.lme.f.reml,type="marginal",individual=1)   # V_i
+R.f
+V.f
+
+## PA predicted values $X_i \times betahat$ are produced by level=0;
+## SS predicted values X_i betahat + Z_i bhat_i are produced by level =  1;
+## both are gotten by level = 0:1
+fitted(fit.lme.f.reml, level=0:1)[1:5,] 
+dat$predi <- fitted(fit.lme.f.reml, level=1) ## individual SS predictions 
+head(dat)
+
+unique(dat$id)[1:10]
+
+## selecting a few trajectories to plot
+datp <- subset(dat, id < 30)
+            
+ggplot(data = datp, aes(x = age, y = fev)) + geom_point() +
+    geom_line(aes(x = age, y = predi), alpha = 1, color="blue") +
+    facet_wrap(~id)
+
+## Can also extract both marginal (PA) residuals  Y_i-X_i betahat,
+## and conditional (SS) residuals Y_i-X_i betahat - Z_i bhat_i
+## level = 0 gives PA, level = 1 gives SS (default), and level = 0:1 gives both;
+## type = default is "raw" residuals; can get standardized "pearson" (type=pearson)
+residuals(fit.lme.f.reml, level=0:1)[1:5, ] 
+
+###   PA and SS pearson residuals -- the PA residuals differ from those
+residuals(fit.lme.f.reml, level=0:1, type="pearson")[1:5, ] 
+
+
+##  Plot SS residuals vs. predicted values
+plot(fit.lme.f.reml, resid(. , type="p",level=1) ~ fitted(.,level=1) )
+
+#  QQ plot of SS residuals 
+qqnorm(fit.lme.f.reml, ~ resid(. , type="p",level=1),abline=c(0,1))
+
+
+##  histograms of random effects
+par(mfrow=c(1,2))
+hist(b.f.reml[,1],xlab="Intercept Random Effect",main="Empirical Bayes Intercepts",freq=FALSE)
+hist(b.f.reml[,2],xlab="Slope Random Effect",main="Empirical Bayes Slopes",freq=FALSE)
+
+```
+
+

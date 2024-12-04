@@ -1,0 +1,112 @@
+---
+title: "lmmur_15"
+author: "Randy"
+date: "9/22/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(lme4)
+```
+
+
+# Chapter 15 Fitting Linear Mixed-Effects Models: The `lmer()` Function
+
+the function `lmer()` from the package **lme4**.
+
+- this function is especially suitable to fit LMMs with crossed random effects.
+- can also fit LMMs to data with hierarchies defined by nested grouping factors.
+
+
+differences between the `lme4::lmer()` and `nlme::lme()` functions. 
+
+- `lme()` has been programmed in the S3 system, while `lmer()` has been implemented in the S4 system
+
+- the methods of extracting results for an LMM fitted by applying the `lmer()` function are different than the methods used for the **lme-class** model-fit objects.
+
+- `lmer()` employs computations based on sparse matrices implemented in Matrix package. 
+
+- Consequently, it can be used for large-scale computational problems, requiring high speed of calculations and efficient storage of the data.
+
+
+- because of space restrictions, we cannot extensively discuss all the technical issues related to the use of the S4 system features in the implementation of `lmer()`. 
+
+## 15.2 Specification of Models with Crossed and Nested Random Effects
+
+
+strictly speaking, we should use the terms **“LMMs with random effects associated with levels of crossed/nested grouping factors”** rather than **“LMMs with crossed/nested random effect”** 
+
+However, the latter terms are commonly used in the LMM literature. For this reason, we will adopt them.
+
+
+In this experiments, each machine, from a randomly selected group of $N$ machines, 
+cuts $n > 1$ times the same shape out from each of $P$ steel plates. 
+
+Let us denote by $y_{ij}$s the precision measurement obtained for the $s$-th shape ($s = 1,...,n$)
+from the $j$-th plate ($j = 1,...,P$) for the $i$-th machine ($i = 1,...,N$). 
+
+
+Thus, for each machine, we obtain in total $P \times n$ measurements.
+
+
+### 15.2.1 A Hypothetical Experiment with the Effects of Plates Nested Within Machines
+
+each of the $P$ series of n shapes for each machine is obtained from a **different** plate
+
+
+$$
+y_{ijs} = \mu+ b_{1,i} + b_{2,ij} + \epsilon_{ijs}, (15.1)
+$$
+
+- $b_{1,i} \sim \mathcal N(0,d_M)$ is the random effect corresponding to machine $i$
+
+- $b_{2,ij} \sim \mathcal N(0, d_P)$ is the random effect corresponding to plate $j$ specific to machine $i$ and independent of $b_{1,i}$
+
+- $\epsilon_{ijs} \sim \mathcal N (0, \sigma^2)$ is the residual (measurement) error, independent of both $b_{1,i}$ and $b_{2,ij}$.
+
+the plate effects are specifically nested within each machine.
+
+the model (15.1) includes $N \times P$ plate effects. 
+
+to indicate the nesting, the index $_{ij}$ in the symbolic representation for the random plate effect $b_{2,ij}$ in (15.1)
+
+
+the resulting marginal variances and covariances are as follows:
+
+$$
+\begin{split}
+Var(y_{ijs}) = d_M + d_P + \sigma^2, \\
+Cov(y_{ijs},y_{ijs'}) = d_M + d_P,\\
+Cov(y_{ijs},y_{ij's}) = Cov(y_{ijs},y_{ij's'}) = d_M,\\
+Cov(y_{ijs},y_{i'js}) = Cov(y_{ijs},y_{i'js'}) = 0, (15.2)\\
+Cov(y_{ijs},y_{i'j's}) = Cov(y_{ijs},y_{i'j's'}) = 0. (15.3)
+\end{split}
+$$
+
+Note that from (15.2) and (15.3) it follows that the measurements for different machines, 
+indexed by $i$, are independent. 
+
+Thus, model (15.1) can be written in the form, presented in (13.5), 
+upon putting $\pmb \beta = \mu$, 
+$\pmb X_{ij} = \pmb Z_{1,ij} ≡ Z_{1, **} = \{_c\ \pmb 1\}^{n} = \pmb 1_n$ (a column
+vector of $n$ $1$s), $Z_{2,ij} ≡ Z_{2,**} = \{_d\ \pmb 1\}^{n} = \pmb I_n$ ($n \times n$ identity matrix), 
+
+and assuming that $\pmb b_i \sim \mathcal N_1(\pmb 0, \pmb d_M)$, $b_{ij} \sim \mathcal N_m(\pmb 0,\ d_P\pmb I_n)$, and $\pmb \epsilon_{ij} \sim \mathcal N_n(0, \sigma^2 \pmb I_n)$.
+
+
+Moreover, model (15.1) can also be expressed in the form specified in (13.6)–(13.9) with block-diagonal matrices $\pmb {\mathbb Z}$, $\pmb {\mathbb D}$, and $\pmb {\mathbb R}$, 
+where the blocks of the matrices are defined, respectively, by $\pmb {\mathbb Z}_i = (\pmb 1_m \otimes \pmb Z_{1,**},\ \pmb I_m \otimes \pmb Z_{2,**}) = (\pmb 1_{n\times m}, \pmb I_m \otimes \pmb 1_n),$
+$D = diag(d_M/\sigma^2, \{d_P/\sigma^2\} \pmb I_m)$, and $\pmb R_i = \pmb I_{n\times m}/\sigma^2$.
+
+Note that the resulting matrix $\pmb {\mathbb D} = \sigma^2 \pmb I_N \otimes \pmb D$ is of dimension $\{N · (m + 1)\} \times \{N · (m + 1)\}$.
+
+
+### 15.2.2 A Hypothetical Experiment with the Effects of Plates Crossed with the Effects of Machines
+
+
+
+
+
+
+

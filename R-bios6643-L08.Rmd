@@ -1,0 +1,404 @@
+---
+title: "BIOS6643. L8 Covariance Structures $R_i$"
+cheauthor: "EJC"
+-- date: "" 
+header-includes:
+   - \usepackage{amsmath}
+   - \usepackage{float}
+output: pdf_document
+---
+
+\newcommand{\bi}{\begin{itemize}}
+\newcommand{\ei}{\end{itemize}}
+\newcommand{\itt}{\item}
+
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- -->
+
+
+```{r installp, echo = FALSE, eval=T, include=F}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(nlme)
+
+```
+
+# 1. Dental study
+
+##
+### Dental study
+
+- The orthodontic study data of Potthoff and Roy (1964). 
+
+- World famous data set that is used to introduce features of longitudinal data modeling and analysis
+
+- A study was conducted involving 27 children, 16 boys and 11 girls
+
+- For each child, the distance (mm) from the center of the pituitary to the pterygomaxillary fissure was measured at ages 8, 10, 12, and 14 years of age 
+
+- The pterygomaxillary fissure is a vertical opening in the human skull.
+
+- **Objectives** of the study included:
+
+  - Determine if distances over time are larger on average for boys than for girls
+  - Determine if the rate of change of distance over time is different for boys and girls.
+
+
+```{r eval=T, echo = T, include=TRUE}
+#  Read in the data 
+dat.den <- read.table("/Users/juarezce/Documents/OneDrive - The University of Colorado Denver/BIOS6643/BIOS6643_Notes/data/dental.txt")
+dat.den <- dat.den[,2:5]      #  remove the first column
+colnames(dat.den) <- c("id","age","distance","gender")
+
+#  Total number of individuals
+m <- max(dat.den$id)
+
+head(dat.den, 2)
+table(dat.den$gender)
+```
+
+# Some descriptives statistics:  
+
+```{r eval=T, echo = F, fig.height=3.7, include=T}
+################################################################################################
+### 
+
+dat.den <- within(dat.den, {  id <- factor(id)
+    gender <- factor(gender,levels=0:1,labels=c("Girls","Boys"))
+})
+
+ggplot(dat.den, aes(x = age, y = distance, group = id)) +
+  # facet_wrap(~treat) +
+  geom_line(aes(color = gender), alpha = 0.5) +
+  theme_classic() +
+  theme(legend.position = "top") +
+  ylab("Distance")
+
+################################################################################################
+### 
+## --------------------------------------------------------------------------------------------
+##  Calculating covariance and correlation matrices
+
+#  Calculate girl- and boy-specific overall sample covariance and correlation
+#  matrices and inspect to get a sense of overall pattern of variation and
+#  correlation
+
+#  Reconfigure the data set from one record per observation to one record
+#  per child using the reshape function (so from "long" to "wide" format 
+#  in R-speak) 
+
+dat.denw <- reshape(dat.den, v.names="distance", idvar="id",
+                       timevar="age", direction="wide")
+head(dat.denw,3)
+
+##  Extract boys and girls separately
+girlsdat <- dat.denw[dat.denw$gender=='Girls',]
+boysdat <- dat.denw[dat.denw$gender=='Boys',]
+
+##  Numbers of girls and boys
+m.girls <- nrow(girlsdat)
+m.boys <- nrow(boysdat)
+
+#  Sample mean vectors -- we could instead fit a straight line to
+#  the data on all m = 27 children and calculate the means as the predicted
+#  values at 8, 10, 12, and 14 years
+girls.mean <- apply(girlsdat[,3:6],2,mean)
+boys.mean <- apply(boysdat[,3:6],2,mean)
+girls.mean
+boys.mean
+
+#  Calculate the sample covariance matrix and correlation matrix for
+#  each gender
+
+girls.cov <- cov(girlsdat[,3:6])
+boys.cov <- cov(boysdat[,3:6])
+
+girls.corr <- cor(girlsdat[,3:6])  #  or use cov2cor(girls.cov)
+boys.corr <- cor(boysdat[,3:6])
+
+girls.cov
+boys.cov
+
+girls.corr
+boys.corr
+```
+# Calculating autocorrelation:  
+
+```{r eval=T, echo = F, fig.height=6, include=T}
+################################################################################################
+### 
+
+##  Calculating covariance and correlation matrices
+
+##  Center and scale to create scatterplot matrices using the scale and
+##  pairs functions
+
+girls.sd <- sqrt(diag(girls.cov))
+boys.sd <- sqrt(diag(boys.cov))
+
+girls.centscale <- scale(girlsdat[,3:6], center=girls.mean, scale=girls.sd)
+boys.centscale <- scale(boysdat[,3:6], center=boys.mean, scale=boys.sd)
+
+##  Now create the scatterplots
+
+agelabs <- c("Age 8", "Age 10", "Age 12", "Age 14")
+
+## scatterplot for girls
+pairs(girls.centscale,label=agelabs,oma=c(5,5,5,5),main="Girls")
+
+## scatterplot for boys
+##pairs(boys.centscale,label=agelabs,oma=c(5,5,5,5),main="Boys")
+
+#  Assuming a common pattern of overall covariance/correlation for 
+#  boys and girls (but different overall means), calculate the pooled
+#  covariance matrix and associated correlation matrix
+
+cov.pooled <- ( (m.girls-1)*girls.cov + (m.boys-1)*boys.cov )/(m-2)
+corr.pooled <- cov2cor(cov.pooled)
+cov.pooled
+corr.pooled
+
+##  Autocorrelations at lags 1, 2, and 3 under stationarity for girls
+ac.lag1 <- cor(c(girls.centscale[,1],girls.centscale[,2],girls.centscale[,3]),
+           c(girls.centscale[,2],girls.centscale[,3],girls.centscale[,4]))
+ac.lag2 <- cor(c(girls.centscale[,1],girls.centscale[,2]),
+           c(girls.centscale[,3],girls.centscale[,4]))
+ac.lag3 <- cor(girls.centscale[,1],girls.centscale[,4])
+
+## autocorrelations
+round(c(ac.lag1,ac.lag2,ac.lag3),3)
+
+##  Create lag plots for girls
+par(mfrow=c(3,1))
+plot(c(girls.centscale[,1],girls.centscale[,2],girls.centscale[,3]),
+     c(girls.centscale[,2],girls.centscale[,3],girls.centscale[,4]),
+     xlab="at age",ylab="at age + 2 years",xlim=c(-2,2),ylim=c(-2,2))
+title("Lag 1 (2 years)")
+
+plot(c(girls.centscale[,1],girls.centscale[,2]),
+     c(girls.centscale[,3],girls.centscale[,4]),xlab="at age",
+     ylab="at age + 4 years",xlim=c(-2,2),ylim=c(-2,2))
+title("Lag 2 (4 years)")
+
+plot(girls.centscale[,1],girls.centscale[,4],xlab="at age",
+     ylab="at age + 6 years",xlim=c(-2,2),ylim=c(-2,2))
+title("Lag 3 (6 years)")
+
+#  Autocorrelations at lags 1, 2, and 3 under stationarity for boys
+#  (could be plotted as above)
+
+ac.lag1.boys <- cor(c(boys.centscale[,1],boys.centscale[,2],boys.centscale[,3]),
+           c(boys.centscale[,2],boys.centscale[,3],boys.centscale[,4]))
+ac.lag2.boys <- cor(c(boys.centscale[,1],boys.centscale[,2]),
+           c(boys.centscale[,3],boys.centscale[,4]))
+ac.lag3.boys <- cor(boys.centscale[,1],boys.centscale[,4])
+
+round(c(ac.lag1.boys,ac.lag2.boys,ac.lag3.boys),3)
+
+
+```
+
+
+## 1. Unstructured correlation
+
+```{r eval=T, echo = T, include=T}
+
+#  Common unstructured correlation with variances changing over time
+#  for both genders -- we extract components of the fit.  
+
+head(dat.den, 2)
+dental.un <- gls(distance ~ -1 + gender + age:gender, data=dat.den,
+                 correlation=corSymm(form =  ~ 1 | id),
+                 weights = varIdent(form = ~ 1 | age), method="ML")
+beta.un <- coef(dental.un)
+sebeta.un <- summary(dental.un)$tTable[,"Std.Error"]
+
+V.un <- getVarCov(dental.un)  ## V_i matrix
+Gamma.un <- cov2cor(V.un) ## Gamma_i=correlation matrix
+vars.un <- diag(V.un) ## Lambda_i= diagonal matrix of variances
+V.un
+Gamma.un
+vars.un
+
+```
+## 2. Common Compound symmetry
+```{r eval=T, echo = T, include=T}
+
+dental.cs <- gls(distance ~ -1 + gender + age:gender, data=dat.den,
+                 correlation=corCompSymm(form = ~ 1 | id),method="ML")
+summary(dental.cs)
+beta.cs <- coef(dental.cs)
+sebeta.cs <- summary(dental.cs)$tTable[,"Std.Error"]
+V.cs <- getVarCov(dental.cs)  
+Gamma.cs <- cov2cor(V.cs)     
+vars.cs <- diag(V.cs)
+V.cs
+Gamma.cs
+vars.cs
+
+```
+
+## 3. Compound symmetry by gender
+
+```{r eval=T, echo = T, include=TRUE}
+
+dental.cs2 <- gls(distance ~ -1 + gender + gender:age, data=dat.den,
+                  correlation=corCompSymm(form = ~ 1 | id),
+                 weights = varIdent(form = ~ 1 | gender), method="ML")
+beta.cs2 <- coef(dental.cs2)
+sebeta.cs2 <- summary(dental.cs2)$tTable[,"Std.Error"]
+V.cs2.girl <-  getVarCov(dental.cs2, individual=1)
+V.cs2.boy <-  getVarCov(dental.cs2, individual=12)
+Gamma.cs2.girl <- cov2cor(V.cs2.girl)
+Gamma.cs2.boy <- cov2cor(V.cs2.boy)
+V.cs2.girl
+Gamma.cs2.girl
+V.cs2.boy
+Gamma.cs2.boy
+
+
+```
+
+## 4. AR(1)
+
+```{r eval=T, echo = T, include=TRUE}
+
+dental.ar1 <- gls(distance ~ -1 + gender + age:gender, data=dat.den,
+                  correlation=corAR1(form = ~ 1 | id), method="ML")
+beta.ar1 <- coef(dental.ar1)
+sebeta.ar1 <- summary(dental.ar1)$tTable[,"Std.Error"]
+V.ar1 <- getVarCov(dental.ar1)  #  or corMatrix(dental.un$modelStruct$corStruct)[[1]]
+Gamma.ar1 <- cov2cor(V.ar1)
+vars.ar1 <- diag(V.ar1)
+V.ar1
+Gamma.ar1
+vars.ar1
+
+
+```
+
+## 5. One-dependent (banded)
+
+```{r eval=T, echo = T, include=TRUE}
+
+## autoregressive moving average process, with arbitrary orders for the autoregressive and moving average components.
+
+dental.1d <- gls(distance ~ -1 + gender +  age:gender, data=dat.den,
+                 correlation=corARMA(form = ~ 1 | id, q=1),method="ML")
+beta.1d <- coef(dental.1d)
+sebeta.1d <- summary(dental.1d)$tTable[,"Std.Error"]
+V.1d <- getVarCov(dental.1d)  #  or corMatrix(dental.un$modelStruct$corStruct)[[1]]
+Gamma.1d <- cov2cor(V.1d)
+vars.1d <- diag(V.1d)
+V.1d
+Gamma.1d
+vars.1d
+
+
+```
+
+## 6. Exponential spatial correlation
+
+```{r eval=T, echo = T, include=TRUE}
+
+## exponential spatial correlation
+dental.exp <- gls(distance ~ -1 + gender +  age:gender, data=dat.den,
+                 correlation=corExp(form = ~ 1 | id),method="ML")
+V.exp <- getVarCov(dental.exp)  #  or corMatrix(dental.un$modelStruct$corStruct)[[1]]
+Gamma.exp <- cov2cor(V.exp)
+vars.exp <- diag(V.exp)
+V.exp
+Gamma.exp
+vars.exp
+
+
+```
+
+## Comparing models
+
+```{r eval=T, echo = T, include=TRUE}
+
+anova(dental.un,dental.cs,dental.cs2,dental.ar1, dental.1d, dental.exp)
+
+
+#  We now fit full and reduced models with this covariance structure
+#  and compare via likelihood ratio test
+
+full <- gls(distance ~ -1 + gender + gender:age, data = dat.den,
+            correlation=corCompSymm(form = ~ 1 | id),
+                 weights = varIdent(form = ~ 1 | gender),method="ML")
+reduced <- gls(distance ~ -1 + gender + age, data = dat.den,
+               correlation=corCompSymm(form = ~ 1 | id),
+               weights = varIdent(form = ~ 1 | gender),method="ML")
+
+anova(full,reduced)
+
+
+```
+
+## Using Wald test to compare models
+
+```{r eval=T, echo = T, include=TRUE}
+##  Note we can test the difference in slopes directly using a
+##  Wald-type test
+full.alt <- gls(distance ~ gender + age + gender:age, data=dat.den,
+                correlation=corCompSymm(form = ~ 1 | id),
+                weights = varIdent(form = ~ 1 | gender),method="ML")
+
+summary(full.alt)
+
+
+```
+
+\newpage
+# 2. Models for the Stepped Care data
+
+### Exercise: Consider the models used here for the Stepped-Care trial and select a model that fits the data well.
+
+**Objective** of the study was to determine if there is an intervention effect.
+
+
+```{r "read stepped-care", eval=T, echo=TRUE, include=TRUE}
+# Read in data 
+dat.step <- read.csv("/Users/juarezce/Documents/OneDrive - The University of Colorado Denver/BIOS6643/BIOS6643_Notes/data/stepped-care-class.csv", header=TRUE)
+
+head(dat.step, 3)
+```
+
+
+```{r test, eval=T, echo = F, fig.height=3.7, include=F}
+  
+  ggplot(dat.step, aes(x = time, y = cops, group = id)) +
+  # facet_wrap(~treat) +
+  geom_line(aes(color = treat), alpha = 0.2) +
+  theme_classic() +
+  theme(legend.position = "top") +
+  ylab("Copping Skill")
+
+```
+
+
+## 
+
+
+
+```{r  eval=T, echo = T, include=TRUE}
+
+
+```
+
+
+
+```{r  eval=T, echo = T, include=TRUE}
+
+
+
+```
+
+```
+

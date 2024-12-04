@@ -1,0 +1,146 @@
+---
+title: "BIOS6643. L16 Introduction to Generalized Additive Models (GAMs)"
+cheauthor: "EJC"
+-- date: "" 
+header-includes:
+   - \usepackage{amsmath}
+   - \usepackage{float}
+output: pdf_document
+---
+
+\newcommand{\bi}{\begin{itemize}}
+\newcommand{\ei}{\end{itemize}}
+\newcommand{\itt}{\item}
+
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- -->
+
+
+```{r installp, echo = FALSE, eval=T, include=F}
+##library(dplyr)
+##library(tidyverse)
+##library(ggplot2)
+##library(geepack)
+##library(lme4)
+
+library(HRW) ## to load spinal bone mineral data
+library(mgcv)
+
+
+```
+
+# Modeling non-linearity in longitudinal data
+
+## Colorado CF FEV data
+The data set gives characteristics of children patients with a diagnosis of Cystic Fibrosis (CF) who are patients at the Colorado Children’s Hospital. 
+
+VARIABLE DESCRIPTIONS:  
+id: patient ID	
+race: race	
+age: Age in years	
+gender	: gender
+fev: \% of predicted forced expiratory volume in 1 second
+
+
+```{r eval=T, echo = T, include=TRUE}
+#  Read in the data 
+
+##  Read in the data 
+dat <- read.csv("/Users/juarezce/Documents/OneDrive - The University of Colorado Denver/BIOS6643/BIOS6643_Notes/data/fev.csv",
+                header=TRUE)
+length(unique(dat$id)) ## number of individuals
+head(dat,3)
+summary(dat$age) ## age in years
+summary(dat$fev)
+dat$sexf <- ifelse(dat$gender=='f', 1, 0)
+table(dat$gender, dat$sex)
+```
+
+## Smooth effect of age
+```{r eval=T, echo = T, include=T}
+
+fit <- gamm(fev ~ sexf + s(age) ,
+            random = list(id = ~1), method='REML',
+            data = dat)
+##attributes(fit)
+summary(fit$gam)
+plot(fit$gam, shade=TRUE, shade.col='palegreen', bty='l')
+
+gam.check(fit$gam)
+summary(fit$lme)
+
+
+```
+
+## Smooth effect of age by gender/sex
+```{r eval=T, echo = T, include=T}
+fit.fem <- gamm(fev ~ s(age) ,
+            random = list(id = ~1), method='REML',
+            data = subset(dat, sexf==1))
+
+fit.ma <- gamm(fev ~ s(age) ,
+            random = list(id = ~1), method='REML',
+            data = subset(dat, sexf==0))
+
+summary(fit.fem$gam)
+summary(fit.ma$gam)
+plot(fit.fem$gam, shade=TRUE, shade.col='palegreen', bty='l')
+plot(fit.ma$gam, shade=TRUE, shade.col='blue', bty='l')
+
+```
+
+
+## GAMM including gender/sex using "by" option
+```{r eval=F, echo = T, include=F}
+fit2 <- gamm(fev ~  sexf + s(age, by=sexf) ,
+            random = list(id = ~1), method='REML',
+            data = dat)
+
+summary(fit2$gam)
+plot(fit2$gam, shade=TRUE, shade.col='palegreen', bty='l')
+
+```
+
+# Weight loss trial (PI: Bessesen) 
+## Weight loss trial (Saxon, 2019 J Gen Intern Med) 
+- Randomized trial at the subject level to compare a toolboox intervention versus usual care in the primary care setting
+
+- The toolbox consisted of: partial meal replacement program, Weight Watchers vouchers, recreation center membership, phentermine-topiramate ER, phentermine, or a group behavioral weight loss program (Colorado Weigh). 
+
+- 305 individuals were randomly selected to be offered intervention, and 2640 were eligible comparators in the usual care group
+
+- 119 individuals had a baseline visit (305-119=186 did not consent or did not attend baseline visit)
+
+```{r eval=T, echo = T, include=T}
+
+dat.wt <- read.csv("/Users/juarezce/Documents/OneDrive - The University of Colorado Denver/BIOS6643/BIOS6643_Notes/data/weight.csv", header=TRUE)
+head(dat.wt, 2)
+
+```
+
+```{r eval=T, echo = T, include=T}
+
+fit.wt <- gamm(wtkg ~  studygrp + s(timemo) ,
+            random = list(studyid = ~1), method='REML',
+            data = dat.wt)
+
+
+summary(fit.wt$gam)
+summary(fit.wt$lme)
+plot(fit.wt$gam, shade=TRUE, shade.col='palegreen', bty='l')
+plot(fit.wt$lme)
+
+gam.check(fit.wt$gam)
+
+```
+
+
+
+
+# Notes
+
+- Package gamm4 works similarly as gamm except it uses lme4:lmer instead of nlme:lme as the engine to fit LMM models. 

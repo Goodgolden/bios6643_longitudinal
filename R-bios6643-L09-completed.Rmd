@@ -1,0 +1,305 @@
+---
+title: "BIOS6643. L9 Specifying LMM through $G_i$ and $R_i$ structures"
+cheauthor: "EJC"
+-- date: "" 
+header-includes:
+   - \usepackage{amsmath}
+   - \usepackage{float}
+output: pdf_document
+---
+
+\newcommand{\bi}{\begin{itemize}}
+\newcommand{\ei}{\end{itemize}}
+\newcommand{\itt}{\item}
+
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- -->
+
+
+```{r installp, echo = FALSE, eval=T, include=F}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(nlme)
+library(lme4)
+
+```
+
+# Dental study
+
+## Description
+
+- The orthodontic study data of Potthoff and Roy (1964). 
+
+- World famous data set that is used to introduce features of longitudinal data modeling and analysis
+
+- A study was conducted involving 27 children, 16 boys and 11 girls
+
+- For each child, the distance (mm) from the center of the pituitary to the pterygomaxillary fissure was measured at ages 8, 10, 12, and 14 years of age 
+
+- The pterygomaxillary fissure is a vertical opening in the human skull.
+
+- **Objectives** of the study included:
+
+  - Determine if distances over time are larger on average for boys than for girls
+  - Determine if the rate of change of distance over time is different for boys and girls.
+
+
+```{r eval=T, echo = T, include=TRUE}
+#  Read in the data 
+dat.den <- read.table("/Users/juarezce/Documents/OneDrive - The University of Colorado Denver/BIOS6643/BIOS6643_Notes/data/dental.txt")
+dat.den <- dat.den[,2:5]      #  remove the first column
+colnames(dat.den) <- c("id","age","distance","gender")
+
+#  Total number of individuals
+m <- max(dat.den$id)
+
+head(dat.den, 2)
+table(dat.den$gender)
+```
+
+
+## Some descriptives:  
+
+```{r eval=T, echo = F, fig.height=3.7, include=T}
+################################################################################################
+### 
+
+dat.den <- within(dat.den, {  id <- factor(id)
+    gender <- factor(gender,levels=0:1,labels=c("Girls","Boys"))
+})
+
+ggplot(dat.den, aes(x = age, y = distance, group = id)) +
+  # facet_wrap(~treat) +
+  geom_line(aes(color = gender), alpha = 0.5) +
+  theme_classic() +
+  theme(legend.position = "top") +
+  ylab("Distance")
+
+```
+
+
+
+## a. Common G matrix for both genders with random intercept and slopes    
+
+```{r eval=T, echo = T, include=T}
+#  (a) Common G matrix for both genders, default diagonal within-child                               
+#      covariance matrix R_i with same variance sigma^2 for each
+#      gender.  
+
+dental.lme.a <- lme(distance ~ -1 + gender + age:gender,data=dat.den,
+                    random = ~ age | id,method="ML")
+summary(dental.lme.a)
+beta.a <- fixed.effects(dental.lme.a)  #  beta, also fixef(dental.lme.a)
+b.a <- random.effects(dental.lme.a)    #  posterior modes bi, also ranef(dental.lme.a)
+sebeta.a <- summary(dental.lme.a)$tTable[,"Std.Error"]  
+## Recall we can get the var-cov of fixed coefficients using 'varFix'
+## dental.lme.a$varFix
+
+G.a <- getVarCov(dental.lme.a, type="random.effects")   #  G matrix
+sigma2.a <- dental.lme.a$sigma^2  # sigma^2
+V.a <- getVarCov(dental.lme.a, type="marginal", individual=1)   # V_i
+R.a <- getVarCov(dental.lme.a, type="conditional", individual=1)   # R_i
+G.a
+V.a
+R.a
+
+```
+
+## b. Common G matrix with random intercepts and slopes, diagonal within-child covariance matrix R_i with different variance for each gender         
+```{r eval=T, echo = T, include=T}
+
+dental.lme.b <- lme(distance ~ -1 + gender + age:gender,data=dat.den,
+                    random = ~ age | id, weights = varIdent(form = ~ 1 | gender),
+                    method="ML")
+beta.b <- fixed.effects(dental.lme.b)  #  beta
+sebeta.model.b <-  sqrt(diag(dental.lme.b$varFix))
+b.b <- random.effects(dental.lme.b)    #  posterior modes bi
+G.b <- getVarCov(dental.lme.b, type="random.effects")   #  G matrix
+R.b.1 <- getVarCov(dental.lme.b,type="conditional",individual=1)   # R_1; first girl
+R.b.12 <- getVarCov(dental.lme.b,type="conditional",individual=12)   # R_12; first boy
+G.b
+R.b.1
+R.b.12
+
+#  As with gls(), when a weight statement is used, the standard
+#  deviation for the first group is sigma, and those for other groups
+#  are parameterized as this standard deviation x a factor. To get 
+#  sigma^2_B, we must extract that factor from the varStruct object:
+#
+dental.lme.b$modelStruct$varStruct
+
+sigma2vec.b <- matrix((1/unique(attributes(dental.lme.b$modelStruct$varStruct)$weights)*dental.lme.b$sigma)^2,
+                      nrow=1,byrow=TRUE)
+colnames(sigma2vec.b) <- c("sigma2.b.G","sigma2.b.B")
+sigma2vec.b
+
+V.b.1 <- getVarCov(dental.lme.b,type="marginal",individual=1)   # V_1 (girl)
+V.b.12 <- getVarCov(dental.lme.b,type="marginal",individual=12)   # V_12 (boy)
+V.b.1
+V.b.12
+
+```
+
+## c. Common G matrix for both genders, and common within-child AR(1)
+
+```{r eval=T, echo = T, include=T}
+
+## Note that we cannot fit a model with separate G matrices for each gender
+
+dental.lme.c <- lme(distance ~ -1 + gender + age:gender, data=dat.den,
+                    random = ~ age | id,
+                    correlation=corAR1(form = ~ age | id),
+                    method="ML")
+summary(dental.lme.c)
+beta.c <- fixed.effects(dental.lme.c)
+b.c <- random.effects(dental.lme.c)
+sebeta.d <- sqrt(diag(dental.lme.c$varFix))
+G.c <- getVarCov(dental.lme.c, type="random.effects")   #  G
+sigma2.c <- dental.lme.c$sigma^2  # sigma^2
+V.c <- getVarCov(dental.lme.c,type="marginal", individual=1)   # V_i
+R.c <- getVarCov(dental.lme.c,type="conditional", individual=1)   # R_i
+G.c
+V.c
+R.c
+
+##  The correlation parameter alpha, which is constrained to be |alpha|<=1,
+##  is estimated to be 0 (= Phi1).  So this fit is the same as (a)
+
+
+```
+
+
+## d. Common G matrix for both genders, common within-child AR(1) (exponential correlation) 
+```{r eval=T, echo = T, include=T}
+
+dental.lme.d <- lme(distance ~ -1 + gender + age:gender, data=dat.den,
+                    random = ~ age | id,
+                    correlation=corExp(form = ~ age | id),
+                    method="ML")
+summary(dental.lme.d)
+beta.d <- fixed.effects(dental.lme.d)
+b.d <- random.effects(dental.lme.d)
+sebeta.model.d <-  sqrt(diag(dental.lme.d$varFix))
+G.d <- getVarCov(dental.lme.d, type="random.effects")   #  G
+sigma2.d <- dental.lme.d$sigma^2  # sigma^2
+R.d <- getVarCov(dental.lme.d,type="conditional",individual=1)  #  R_i
+V.d <- getVarCov(dental.lme.d,type="marginal",individual=1)   # V_i
+R.d
+V.d
+
+```
+
+## Comparison of models
+
+```{r eval=T, echo = T, include=T}
+
+
+## Compare the fitted models via AIC and BIC; model (b), with
+#  diagonal R_i with gender-specific within-child variances and common
+#  random intercept and slopes covariance matrix G is preferred
+
+anova(dental.lme.a, dental.lme.b, dental.lme.c, dental.lme.d)
+
+```
+
+
+## Refitting final model
+
+```{r eval=T, echo = T, include=T, fig.height=4}
+##  Refit model (b) using REML and get 
+dental.lme.b.reml <- lme(distance ~ -1 + gender + age:gender, data=dat.den,
+                    random = ~ age | id, weights = varIdent(form = ~ 1 | gender))
+beta.b.reml <- fixed.effects(dental.lme.b.reml)  #  beta
+sebeta.model.b.reml <-  sqrt(diag(dental.lme.b$varFix))
+b.b.reml <- random.effects(dental.lme.b.reml)    #  posterior modes bi
+G.b.reml <- getVarCov(dental.lme.b.reml, type="random.effects")   #  G
+G.b.reml
+
+##  Random effects empirical Bayes estimates bhat_i for first 5 girls
+b.b.reml[1:5,]
+
+## PA predicted values $X_i \times betahat$ are produced by level=0;
+## SS predicted values X_i betahat + Z_i bhat_i are produced by level =  1;
+## both are gotten by level = 0:1
+
+fitted(dental.lme.b.reml,level=0:1)[1:5,] 
+
+## Can also extract both marginal (PA) residuals  Y_i-X_i betahat,
+## and conditional (SS) residuals Y_i-X_i betahat - Z_i bhat_i
+## level = 0 gives PA, level = 1 gives SS (default), and level = 0:1 gives both;
+## type = default is "raw" residuals; can get standardized "pearson" (type=pearson)
+
+residuals(dental.lme.b.reml, level=0:1)[1:5, ] 
+
+###   PA and SS pearson residuals -- the PA residuals differ from those
+##   obtained from PROC MIXED apparently due to different standardization
+residuals(dental.lme.b.reml, level=0:1, type="pearson")[1:5, ] 
+
+
+##  Plot SS residuals vs. predicted values
+
+plot(dental.lme.b.reml, resid(. , type="p",level=1) ~ fitted(.,level=1) )
+
+#  QQ plot of SS residuals 
+qqnorm(dental.lme.b.reml, ~ resid(. , type="p",level=1),abline=c(0,1))
+
+#  One can also make QQ plots and histograms of the bhat_i themselves
+#  to assess the normality of the random effects, but remember that 
+#  these are "shrunken" so could be misleading.  
+
+qqnorm(dental.lme.b.reml, ~ ranef(.))
+
+##  histograms of random effects
+par(mfrow=c(1,2))
+hist(b.b.reml[,1],xlab="Intercept Random Effect",main="Empirical Bayes Intercepts",freq=FALSE)
+hist(b.b.reml[,2],xlab="Slope Random Effect",main="Empirical Bayes Slopes",freq=FALSE)
+
+```
+
+\newpage
+# Fitting models using lme4:lmer
+
+```{r eval=T, echo = T, include=T}
+
+#  We fit only model (a), Common G matrix for both genders, default
+#  diagonal wintin-child covariance matrix  R_i witih same variance
+#  sigma^2 for each gender.  We use ML as in the lme() and SAS programs.
+
+#  The random effects structure is specified in parentheses -- here,
+#  we allow for random intercept and slope that are correlated
+
+dental.lmer.a <- lmer(distance ~ -1 + gender + age:gender + (1 + age | id),
+                      REML=FALSE, data=dat.den)
+
+summary(dental.lmer.a)
+## sebeta.model.a
+##     gender0     gender1 gender0:age gender1:age 
+##  1.18202362  0.98008221  0.09980390  0.08275303 
+
+beta.lmer.a <- fixef(dental.lmer.a)
+beta.lmer.a
+b.lmer.a <- ranef(dental.lmer.a)
+sigma2.lmer.a <- sigma(dental.lmer.a)^2
+
+#  It is pretty unwieldy to extract the covariance matrix D of the
+#  random effects.  We can look at the variances and correlation with
+vc.a <- VarCorr(dental.lmer.a)
+
+print(vc.a,comp="Variance")
+
+#  All the covariance matrix stuff can be put in a data frame, from
+#  which it can be extracted to form the matrices G, R_i, and V_i
+vc.da <- as.data.frame(vc.a, order="lower.tri")
+vc.da
+
+G.lmer.a <- matrix(c(vc.da[1,4],vc.da[2,4],vc.da[2,4],vc.da[3,4]),2,2,
+                   byrow=TRUE)
+G.lmer.a
+
+```
+

@@ -1,0 +1,158 @@
+---
+title: "BIOS6643. L05:  Full rank, Estimability and Contrasts"
+cheauthor: "EJC"
+-- date: "" 
+header-includes:
+   - \usepackage{amsmath}
+   - \usepackage{float}
+output: pdf_document
+---
+
+\newcommand{\bi}{\begin{itemize}}
+\newcommand{\ei}{\end{itemize}}
+\newcommand{\itt}{\item}
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- supplement of L05. Only R notes are included here -->
+
+
+# Notes
+
+```{r installp, echo = FALSE}
+## install.packages("KMsurv")
+## install.packages("km.ci")
+## install.packages("survRM2")
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(nlme)
+
+```
+
+
+##
+### Example 5: Prospective randomized trial
+
+STEPPED-CARE randomized trial. The dataset we will use the class resembles the trial.
+
+- A behavioral intervention was tested versus usual care in 286 patients with lung or head and neck cancer.  
+- Population: low income patients in the Denver area across 5 hospitals
+- Primary outcomes: anxiety, depression and coping skills scores
+- Outcomes were measured at baseline, and at 6, 12 and 24 weeks
+
+
+```{r "read stepped-care", eval=T, echo=TRUE, include=TRUE}
+# Read in data 
+dat.step <- read.csv("/Users/juarezce/Documents/OneDrive - The University of Colorado Denver/BIOS6643/BIOS6643_Notes/data/stepped-care-class.csv", header=TRUE)
+
+head(dat.step, 3)
+```
+
+
+
+```{r test, eval=T, echo = F, fig.height=3.7, include=TRUE}
+  ggplot(dat.step, aes(x = time, y = cops, group = id)) +
+  # facet_wrap(~treat) +
+  geom_line(aes(color = treat), alpha = 0.2) +
+  theme_classic() +
+  theme(legend.position = "top") +
+  ylab("Copping Skill")
+
+```
+
+# Tests using the Stepped Care data
+
+## 
+1. Write a model that includes intervention arm and time as categorical/class variables, plus intervention $\times$ time interaction.
+
+2. Provide estimates of means at 6 weeks for the control and intervention arms.
+
+3. Provide a test for the mean difference at 6 weeks between the control and intervention arms.
+
+4. Write a test to compare is if trends over time differ between intervention/treatment arms.
+
+5. Write a test to compare changes from beginning to end among the 2 treatment arms.
+
+
+## 1. Write a model that includes intervention arm and time as class variables, plus intervention $\times$ time interaction.
+
+```{r models, eval=T, echo = T, include=TRUE}
+dat.step$time <- as.factor(dat.step$time)
+
+## parameterization 1
+fit1 <- lme(cops ~  treat*time,
+            random= ~ 1 | id, data = dat.step)
+summary(fit1) 
+
+## parameterization 1
+fit2 <- lme(cops ~  time + treat:time-1,
+            random= ~ 1 | id, data = dat.step)
+summary(fit2) 
+
+```
+# Estimating means in the control and intervention arm at 6 weeks
+```{r eval=T, echo = T, include=TRUE}
+## estimate the means in the control and intervention arm at 6 weeks
+coef2 <- summary(fit2)$coef$fixed
+cov2 <- summary(fit2)$varFix
+
+c6.c <- c(0, 1, 0, 0,
+          0, 0, 0, 0)
+c6.i <- c(0, 1, 0, 0,
+          0, 1, 0, 0)
+mu6.control <- c6.c %*% coef2 
+mu6.int <- c6.i %*% coef2 
+
+mu6.control
+mu6.int
+
+se6.control <- sqrt(c6.c %*% cov2  %*%  c6.c)
+se6.int <- sqrt(c6.i %*% cov2  %*%  c6.i)
+## mean, SE in control 
+c(mu6.control, se6.control)
+## mean, SE in intervention
+c(mu6.int, se6.int)
+```
+# Estimating the mean difference in the control and intervention arm at 6 weeks
+```{r eval=T, echo = T, include=TRUE}
+## estimate the difference between intervention and control arm
+c6.dif <- c(0, 0, 0, 0,
+            0, 1, 0, 0)
+mu6.dif <- c6.dif %*% coef2 
+se6.dif <- sqrt(c6.dif %*% cov2  %*%  c6.dif)
+c(mu6.dif, se6.dif)
+```
+
+# Test the hypothesis that there is an interaction between time and treatment arm
+```{r eval=T, echo = T, include=TRUE}
+## reduced model
+fit.red <- lme(cops ~  time -1,
+            random= ~ 1 | id, data = dat.step)
+summary(fit.red) 
+anova.lme(fit2, fit.red) 
+
+fit2$logLik
+fit.red$logLik
+2*(fit2$logLik-fit.red$logLik)
+pchisq(2*(fit2$logLik-fit.red$logLik), 4, ncp=0, lower.tail=FALSE, log.p=FALSE)
+```
+# Construct a wald-type test for the hypothesis that there is an interaction between time and treatment arm
+```{r eval=T, echo = T, include=TRUE}
+##  testing all parameters corresponding to the diff in means are 0
+c.w <- matrix(c(0, 0, 0, 0, 1, 0, 0, 0,
+                0, 0, 0, 0, 0, 1, 0, 0,
+                0, 0, 0, 0, 0, 0, 1, 0,
+                0, 0, 0, 0, 0, 0, 0, 1), byrow=T, 4, 8)
+
+c.wa <- c.w%*%coef2
+## chisquare test value
+chisq.v <- t(c.wa)%*%solve(c.w%*% cov2  %*%t(c.w)) %*% c.wa 
+pval.w <- pchisq(chisq.v, 4, ncp=0, lower.tail=FALSE, log.p=FALSE)
+pval.w
+
+```
+

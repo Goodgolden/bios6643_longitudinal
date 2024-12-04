@@ -1,0 +1,731 @@
+---
+title: "03_lmmur_chapter3"
+author: "Randy"
+date: "9/5/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+
+library("nlmeU")
+library("lme4")
+library("nlme")
+
+
+library("tidyverse")
+library("here")
+library("janitor")
+library("knitr")
+library("tinytex")
+library("bookdown")
+
+```
+
+# Chapter 3 Data Exploration
+
+## 3.2 ARMD Trial: Visual Acuity
+
+mainly interested in the effect of treatment 
+on the visual acuity measurements. 
+
+looking at the measurements by plotting them against time 
+for several selected patients from both treatment groups.
+
+```{r "R3.1"}
+data(armd.wide, armd0, package = "nlmeU")
+library(lattice)
+# View(armd0)
+# View(armd.wide)
+
+# Subset
+armd0.subset <- armd0 %>%
+  filter(subject %in% seq(1, 240, 10))
+
+# View(armd0.subset)
+# subset(armd0, as.numeric(subject) %in% seq(1, 240, 10))
+
+# Draft plot
+xy1 <- 
+  lattice::xyplot(
+    ##  The function jitter()
+    ##  is used to add a small amount of 
+    ##  noise to the variable time, 
+    ##  thereby reducing overlapping points.
+    visual ~ jitter(time) | treat.f,
+    groups = subject,
+    data = armd0.subset,
+    type = "l", 
+    lty = 1
+    )
+
+# Fig. 3.1
+update(
+  xy1,
+  xlab = "Time (in weeks)",
+  ylab = "Visual acuity",
+  grid = "h"
+  )
+
+detach(package:lattice)
+```
+
+- In general, visual acuity **tends to decrease in time**. This is in agreement with the remark that patients with ARMD progressively lose vision. 
+
+- For some patients, a **linear decrease** of visual acuity over time can be observed, but there are also patients for whom individual profiles strongly **deviate from a linear trend**. 
+
+- Visual acuity measurements adjacent in time are fairly **well correlated**, with the correlation decreasing with an increasing distance in time.
+
+- Visual acuity at **baseline** seems to, at least partially, determine the overall level of the post-randomization measurements.
+
+- There are patients for whom several **measurements are missing**.
+
+These observations will be taken into account when constructing models for the data.
+
+- The formula used in the syntax indicates that the variables visual and time are to be used on the y- and x-axis, respectively.
+
+- These variables are plotted against each other 
+in separate panels for different values of the factor. 
+
+- Within each panel, data points are grouped for each subject and connected using solid lines. 
+
+- The function `jitter()` is used to add a small amount of noise to the variable time, thereby reducing the number of overlapping points.
+
+### 3.2.1 Patterns of Missing Data
+
+```{r "R3.2"}
+table(armd.wide$miss.pat)
+with(armd.wide, table(miss.pat))
+
+## Create a contingency table 
+## (optionally a sparse matrix) 
+## from cross-classifying factors, 
+## usually contained in a data frame, 
+## using a formula interface.
+xtabs(~miss.pat, armd.wide)
+```
+
+- From the displayed results, we can conclude that, 
+for instance, there were 188 patients for whom all four postrandomization visual acuity measurements were obtained. 
+
+- On the other hand, there were six patients for whom the four measurements were missing.
+
+- It is also worth noting that there are eight with four
+different nonmonotone missing-data patterns, i.e., with intermittent missing.
+
+- When modeling data with such patterns, extra care is needed
+when specifying variance-covariance structures. 
+
+### 3.2.2 Mean-Value Profiles
+
+```{r "R3.3"}
+## (a) Counts of nonmissing visual acuity measurements
+attach(armd0)
+
+# "By" factors
+flst <- list(time.f, treat.f) 
+## Counting
+(tN <- tapply(visual, flst,
+              FUN = function(x) length(x[!is.na(x)])
+              ))
+
+## (b) Sample means and medians of visual acuity measurements
+# Sample means
+tMn <- tapply(visual, flst, FUN = mean) 
+# Sample medians
+tMd <- tapply(visual, flst, FUN = median) 
+# Column names
+colnames(res <- cbind(tN, tMn, tMd)) 
+
+nms1 <- rep(c("P", "A"), 3)
+nms2 <- rep(c("n", "Mean", "Mdn"), rep(2, 3))
+# New column names
+colnames(res) <- paste(nms1, nms2, sep = ":") 
+res
+
+detach(armd0)
+```
+
+- There are more missing measurements in active treatment group.
+
+- We conclude that, on average, there was very little difference in visual acuity between the two treatment groups at baseline, which is expected in a randomized study. 
+
+- During the course of the study, the mean visual acuity decreased with time in both arms, which confirms the observation made based on the individual profiles presented. 
+
+- It is worth noting that the mean value is consistently higher in the placebo group, which suggests lack of effect ...
+
+```{r}
+## the function bwplot() from the package lattice
+## A disadvantage of the plot is that 
+## it does not reflect the longitudinal
+## structure of the data
+library(lattice)
+bw1 <- bwplot(visual ~ time.f | treat.f,
+              data = armd0)
+
+xlims <- c("Base", "4\nwks", "12\nwks",
+           "24\nwks", "52\nwks")
+update(bw1, xlim = xlims, pch = "|")
+detach(package:lattice)
+```
+
+- The decrease of the mean values in time is clearly seen for both treatment groups. 
+
+- It is more pronounced for the activetreatment arm. 
+
+- We note that the number of subjects for the patterns with a larger number of missing values tends to be smaller.
+
+- The mean profiles, consistently decrease for the majority of
+the patterns. 
+
+- In general, they do not suggest an improvement in visual acuity before the drop off. 
+
+- Thus, they do not support the aforementioned explanation of a faster decrease of the mean visual acuity in the active-treatment arm.
+
+
+- The syntax to investigate the number and form of monotone missing-data patterns for visual acuity.
+
+```{r "R3.5"}
+## (a) Subset of the data with monotone missing-data patterns
+## use droplevels() function to remove the unused levels
+mnt.pat <- # Monotone patterns
+  c("----", "---X", "--XX", "-XXX", "XXXX")
+armd.wide.mnt <- # Data subset
+  subset(armd.wide, 
+         miss.pat %in% mnt.pat)
+# Number of rows and cols
+dim(armd.wide.mnt)
+# View(armd.wide.mnt)
+
+# Some levels not needed
+levels(armd.wide.mnt$miss.pat) 
+
+## (b) Removing unused levels from the miss.pat factor
+armd.wide.mnt1 <-
+  within(armd.wide.mnt, {
+    miss.pat <- factor(miss.pat, levels = mnt.pat)
+  })
+levels(armd.wide.mnt1$miss.pat)
+
+## (c) The number of patients with different monotone missing-data patterns
+with(armd.wide.mnt1, {
+  # List of "by" factors
+  fl <- list(treat.f, miss.pat) 
+  tapply(subject, fl, 
+         FUN = function(x) length(x[!is.na(x)]))
+})
+
+```
+
+- The displayed results indicate that the mean-value profiles for
+missing-data patterns with a larger number of missing values,
+are based on measurements for a small number of patients.
+
+- Thus, the variability of these profiles is larger than for the patterns with a smaller number of missing values.
+
+- Therefore, the interpretation of missing pattern figures should be applied with caution.
+
+
+## 3.2.3 Sample Variances and Correlations of Visual Acuity Measurements
+
+```{r fig.height=5, fig.width=5.5}
+knitr::include_graphics("figure/f3.4.png")
+
+## Quick display of two cabapilities of GGally,
+## to assess the distribution and correlation of variables
+# library(GGally)
+# 
+## Create data
+# data <- data.frame(
+#   v1 = 1:100 rnorm(100, sd = 20), 
+#   v2 = 1:100 rnorm(100, sd = 27),
+#   v3 = rep(1, 100) rnorm(100, sd = 1),
+#   v4 = rep(1, 100) rnorm(100, sd = 20),
+#   v5 = rep(1, 100) rnorm(100, sd = 27)
+#   )
+# 
+## Check correlations (as scatterplots), distribution and print corrleation coefficient
+# ggpairs(data, title = "correlogram with ggpairs()") 
+
+
+armd.wide.mnt %>% 
+  select(visual0:visual52) %>%
+  GGally::ggpairs()
+```
+
+- It can be observed that the measurements adjacent in time are strongly correlated. 
+
+- The correlation decreases with an increasing time gap. 
+
+- Worth noting is the fact that there is a substantial positive correlation between visual
+acuity at baseline and at the other post-randomization measurements. 
+
+- Thus, baseline values might be used to explain the overall variability of the post-randomization observations. 
+
+- This agrees with the observation made based on Fig. 3.1. 
+
+- It is worth noting that a scatterplot matrix of this type may not work well for
+longitudinal data with irregular time intervals.
+
+```{r}
+visual.x <- subset(armd.wide, 
+                   select = c(visual0:visual52))
+# View(visual.x)
+ 
+## Var-cov mtx
+(varx <- var(visual.x, 
+             ## selects only those rows of 
+             ## the data frame visual.x 
+             ## do not contain any missing values.
+             ## An alternative would be to specify 
+             ## use = "pairwise.complete.obs"
+             ## In that case, the elements of the matrices 
+             ## would be estimated using data 
+             ## for all patients with complete observations 
+             ## for the particular paired measurements. 
+             ## This could result in estimates 
+             ## of var-cov not be PSD
+             use = "complete.obs")) 
+
+## Corr mtx
+print(
+  cor(visual.x, 
+          ## selects only those rows of 
+          ## the data frame visual.x 
+          ## do not contain any missing values.
+          use = "complete.obs"
+      ),
+      digits = 2)
+
+## Var-cov diagonal elements
+diag(varx) 
+## Corr mtx (alternative way)
+cov2cor(varx) 
+
+```
+
+- Toward this end, we create the data frame visual.x from armd.wide by selecting only the five variables containing the measurements. 
+
+- We then apply functions `var()` and `cor()` to estimate the variance–covariance matrix and the correlation matrix, respectively.
+
+- In this way, the estimated matrices are assured to be positive semidefinite.
+
+- It indicates an increase of the variance of visual acuity measurements obtained at later timepoints.
+
+- The estimated correlation matrix suggests a moderate to strong correlation of the measurements. 
+
+- The correlation clearly decreases with the time gap.
+
+
+## 3.3 PRT Study: Muscle Fiber Specific Force
+
+- In the PRT study, we are primarily interested in the effect of the intensity of the training on the muscle fiber specific force, measurements of which are contained in the variable `spec.fo` of the `prt` data frame. 
+
+- In some analyses, we will also investigate the effect on the measurements of the isometric force, which are stored in the variable `iso.fo`.
+
+- The displayed values of the statistics do not indicate any substantial differences in the distribution of BMI between subjects assigned to randomization groups. 
+
+- Given that the assignment was randomized, this result is anticipated.
+
+```{r "R3.7"}
+# Data loaded
+data(prt.subjects, prt, 
+     package = "nlmeU") 
+# View(prt.subjects)
+with(prt.subjects, 
+     tapply(bmi, prt.f, summary))
+
+## Apply a Function to a Data Frame Split by Factors
+## by(data, INDICES, FUN, ..., simplify = TRUE)
+by(subset(prt.subjects, 
+          select = -id),
+   prt.subjects$prt.f, 
+   summary)
+
+# prt.subjects %>%
+#   group_by(prt.f) %>%
+#   summarise(bmi_mean = mean(bmi),
+#             quantile(bmi, probs = seq(0, 1, 0.25)))
+```
+
+
+```{r "tidyverse group quantile", eval = FALSE}
+## This method uses purrr::map and a Function Operator,
+## purrr::partial, to create a list of functions 
+## that can than be applied to a data set 
+## using dplyr::summarize_at and a little magic from rlang.
+## Looking at p_funs we can see that we have a named list 
+## with each element containing a function 
+## comprised of the quantile function. 
+##  
+## The beauty of this is that you can use this list 
+## in the same way you would define multiple functions 
+## in any other summarize_at or summarize_all functions 
+## (i.e. funs(mean, sd)). 
+## now have to use ##  the “bang-bang-bang” operator (!!!)
+## from rlang (it is also exported from dplyr). 
+
+p <- c(0.2, 0.5, 0.8)
+p_names <- map_chr(p, ~paste0(.x * 100, "%"))
+p_funs <- 
+  map(p, 
+      ~partial(quantile,
+               probs = .x, 
+               na.rm = TRUE)) %>% 
+       set_names(nm = p_names)
+
+p_funs
+
+mtcars %>% 
+  group_by(cyl) %>% 
+  summarize_at(vars(mpg), funs(!!!p_funs))
+
+mtcars %>% 
+  group_by(cyl) %>% 
+  summarize_at(vars(mpg, hp), funs(!!!p_funs)) %>%
+  ## to re-arrange the order of the columns
+  select(cyl, contains("mpg"), contains("hp"))
+```
+
+- From the displayed values of the statistics, we conclude that there are no important differences in the distribution of sex and age groups between the two intervention groups. 
+
+- This is expected, given that the randomization was stratified by the two factors.
+
+```{r}
+## (a) Number of fibers per type and occasion 
+## for the subjects "5" and "335"
+fibL <-  with(prt,
+              tapply(spec.fo,
+                     list(id = id, 
+                          fiberF = fiber.f, 
+                          occF = occ.f),
+                     length))
+# View(prt)
+# str(fibL)
+dimnms <- dimnames(fibL)
+# Shortened names displayed
+names(dimnms) 
+# Number of fiber measurements for subject 5
+fibL["5", , ] 
+# Number of fiber measurements for subject 335
+fibL["335", , ] 
+
+## (b) Mean value of spec.fo by fiber type 
+## and occasion for subject "5"
+fibM <-
+  with(prt,
+       ## in the call to the function tapply(), 
+       ## we use a named list of the factors. 
+       ## names of the components of the list
+       ## are shortened versions of the factor names.
+    tapply(spec.fo,
+           list(id = id, 
+                fiberF = fiber.f,
+                occF = occ.f),
+           mean))
+fibM["5", , ]
+```
+
+
+```{r}
+## (a) Preprocessing of the data (melting)
+library(reshape)
+idvar <- c("id", "prt.f", "fiber.f", "occ.f")
+meas.var <- c("spec.fo", "iso.fo")
+
+# Melting data
+prtM <- melt(prt,
+             id.var = idvar,
+             measure.var = meas.var)
+## results from the stacking of the values of
+## spec.fo and iso.fo in the variable value. 
+dim(prtM)
+names(prtM)
+
+## (b) Aggregating data (casting)
+## Casting data
+## Cast a molten data frame into the reshaped 
+## or aggregated form you want
+## cast(data, formula = ... ~ variable, fun.aggregate=NULL, ...)
+prtC <- cast(prtM,
+             fun.aggregate = mean)
+dim(prtC)
+names(prtC)
+head(prtC, n = 8)
+# Names modified
+names(prtC)[5:6] <- c("spec.foMn", "iso.foMn")
+# View(prtC)
+# View(prtM)
+```
+
+- There is no clear effect of the training intensity
+- In general, measurements of the specific force are higher for type-2 than for type-1 fibers
+- On average, post-training values are larger than pre-training measurements
+- For both types of fibers, there is a considerable variability between subjects with respect to the overall level of measurements and with respect to the magnitude of the post-pre differences
+- There is a correlation between the mean measurements observed for the same individual, as seen, e.g., from the similar pattern of measurements for both types.
+
+
+```{r "Figure3.5", fig.height=10, fig.width=10}
+f3.5 <- prtC %>% 
+  ggplot(aes(spec.foMn, reorder(id, spec.foMn), colour = occ.f)) +
+  geom_point() +
+  facet_wrap(. ~ prt.f + fiber.f, scales = "free_y") 
+  # facet_grid(prt.f + fiber.f~., scales = "free_y")
+f3.5 + theme_classic()
+```
+
+
+```{r "Figure3.6", fig.height=10, fig.width=10}
+f3.6 <- prt %>% 
+  filter(fiber.f == "Type 1") %>%
+  ggplot(aes(spec.fo, y = reorder(id, spec.fo), group = id)) +
+  geom_boxplot() +
+  facet_wrap(. ~ prt.f + occ.f, scales = "free_y") 
+f3.6 + theme_classic()
+```
+
+```{r "Figure3.7", fig.height=6, fig.width=6}
+f3.7 <- prtC %>%
+  filter(fiber.f == "Type 1") %>%
+  select(-iso.foMn) %>%
+  pivot_wider(names_from = occ.f, 
+              values_from = spec.foMn) %>% 
+  mutate(difference = Pos - Pre) %>%
+  ggplot(aes(difference, y = reorder(id, difference), group = id)) +
+  geom_point() +
+  facet_wrap(. ~ prt.f, scales = "free_y") +
+  scale_y_discrete(drop = TRUE)
+
+
+f3.7 + theme_light()
+```
+
+## 3.4 SII Project: Gain in the Math Achievement Score
+
+```{r "R.10"}
+data(SIIdata, package = "nlmeU")
+sapply(SIIdata, FUN = function(x) any(is.na(x)))
+sum(as.numeric(is.na(SIIdata$mathknow)))
+range(SIIdata$mathknow, na.rm = TRUE)
+```
+
+### 3.4.1 School-Level Data
+
+```{r "R.11&12"}
+(schlN <- xtabs(~schoolid, SIIdata))
+range(schlN)
+xtabs(~schlN)
+
+attach(SIIdata)
+##  Toward this end, with the
+##  help of the function by(), 
+##  we apply the function colMeans() 
+##  to the values of the two variables 
+##  within the groups defined by 
+##  the same level of the factor schoolid
+(mthgM <- by(cbind(mathgain, mathkind), schoolid, colMeans))
+# View(mthgM)
+View(SIIdata)
+detach(SIIdata)
+```
+
+
+```{r "R.13"}
+## (a) Creating a data frame with the number 
+## of classes and children for each school
+# library(reshape)
+idvars <- c("schoolid")
+mvars <- c("classid", "childid")
+## into long format for the mean calculation
+dtm1 <- melt(SIIdata, 
+             id.vars = idvars, 
+             measure.vars = mvars)
+# View(dtm1)
+names(cst1 <- cast(dtm1, 
+                   fun.aggregate = function(el) 
+                     length(unique(el))))
+# View(cst1)
+names(cst1) <- c("schoolid", "clssn", "schlN")
+
+## (b) Creating a data frame with 
+## the school-specific means of selected variables
+mvars <- c("mathgain", "mathkind", "housepov")
+dtm2 <- melt(SIIdata, 
+             id.vars = idvars, 
+             measure.vars = mvars)
+names(cst2 <- cast(dtm2, fun.aggregate = mean))
+# View(cst2)
+names(cst2) <- c("schoolid", "mthgMn", "mthkMn", "housepov")
+
+## (c) Merging the data frames created in parts (a) and (b) above
+(schlDt <- merge(cst1, cst2, sort = FALSE))
+
+rm(cst1, cst2)
+```
+
+```{r "R.14", fig.height=5, fig.width=5}
+## (a) Summary statistics for the 
+## school-specific mean values of housepov
+summary(schlDt$housepov)
+# View(schlDt)
+
+## (b) Scatterplots of the school-specific 
+## mean values for housepov and mathkind
+library(lattice)
+xyplot(mthgMn ~ housepov, 
+       schlDt, 
+       type = c("p", "smooth"),
+       grid = TRUE)
+xyplot(mthgMn ~ mthkMn, 
+       schlDt, 
+       type = c("p", "smooth"), 
+       grid = TRUE)
+# ?xyplot
+```
+
+- should be interpreted with caution, as they show school-specific means, which were estimated based on different numbers of observations.
+
+### 3.4.2 Class-Level Data
+
+```{r "R.15&16"}
+# (clssN <- xtabs(~ classid, SIIdata))
+sum(clssN)
+range(clssN)
+(clssCnt <- xtabs(~clssN))
+sum(clssCnt)
+
+idvars <- c("classid", "housepov", "mathknow", "mathprep")
+mvars <- c("childid")
+## into long format for the mean calculation
+dtm1 <- melt(SIIdata, 
+             id.vars = idvars, 
+             measure.vars = mvars)
+# View(SIIdata)
+# View(dtm1)
+names(cst1 <- cast(dtm1, 
+                   fun.aggregate = function(el) 
+                     length(unique(el))))
+# View(cst1)
+names(cst1) <- c("class", "housepov", 
+                 "mathknow", "mathprep", "clssN")
+
+## (b) Creating a data frame with 
+## the school-specific means of selected variables
+mvars <- c("mathgain", "mathkind")
+dtm2 <- melt(SIIdata, 
+             id.vars = idvars, 
+             measure.vars = mvars)
+names(cst2 <- cast(dtm2, fun.aggregate = mean))
+# View(cst2)
+names(cst2) <- c("class", "housepov", 
+                 "mathknow", "mathprep",
+                 "mthgMn", "mthkMn")
+# View(cst2)
+## (c) Merging the data frames created 
+## in parts (a) and (b) above
+(clssDt <- merge(cst1, cst2, sort = FALSE))
+
+rm(cst1, cst2)
+# View(clssDt)
+```
+
+
+```{r "Figure 3.9", fig.height=5, fig.width=5}
+library(lattice)
+xyplot(mthgMn ~ housepov, 
+       clssDt, 
+       type = c("p", "smooth"),
+       grid = TRUE)
+xyplot(mthgMn ~ mthkMn, 
+       clssDt, 
+       type = c("p", "smooth"), 
+       grid = TRUE)
+```
+
+- Figure 3.9a does not suggest a strong relationship between the mean values of mathgain and housepov. 
+
+- On the other hand, as seen in Fig. 3.9b, there is a strong negative relationship between the mean values of mathgain and mathkind.
+
+- These conclusions are similar to the ones drawn based on Fig. 3.8. 
+
+- As was the case for the latter figure, the plots in Fig. 3.9 should be interpreted with caution, as they show class-specific mean values estimated based on different numbers of observations.
+
+### 3.4.3 Pupil-Level Data
+++ 
++ 
+```{r fig.height=5, fig.width=5}
+## (a) Adding the class-level data to the data frame SIIdata
+auxDt <- merge(SIIdata, clssDt, sort = FALSE)
+# View(auxDt)
+# auxDt2 <- within(auxDt,
+#                  {
+#                    auxL <- paste(classid, schoolid, sep = ":") 
+#                    auxL1 <- paste(auxL, clssN, sep = "(")
+#                    auxL2 <- paste(auxL1, ")", sep = "")
+#                    clssF <- factor(schoolid:classid, 
+#                                    labels = unique(auxL2))
+#                    }
+#                  )
+
+auxDt2 <- auxDt %>%
+  mutate(clssF = paste("C", classid, "\nS:", schoolid,
+                       "\nn(", clssN, ")",sep = ""))
+# View(auxDt2)
+tmpDt <- subset(auxDt2, 
+                select = c(classid, schoolid, clssN, clssF))
+# View(tmpDt)
+
+## (b) Scatterplots of the pupil-level data
+library(lattice)
+dotplot(mathgain ~ clssF, # Fig. 3.10a
+        jitter = TRUE,
+        subset(auxDt2, schoolid %in% 1:4))
+xyplot(mathgain ~ housepov,
+       SIIdata, # Fig. 3.10b
+       type = c("p", "smooth"))
+detach(package:lattice)
+```
+
+- considerable variability of the observed values of the gain in the math achievement score even between the classes belonging to the same school.
+
+- note that the interpretation of the plot is much enhanced by the
+labels provided on the horizontal axis
+
+- Fig. 3.10b indicates the lack of a relationship between the observed values of the gain in the math achievement score for individual pupils and the values of the variable housepov. 
+
+## 3.5 FCAT Study: Target Score
+
+```{r fig.height=5, fig.width=10}
+## (a) Summarizing scores for each child and attainment target
+data(fcat, package = "nlmeU")
+(scM <- with(fcat, tapply(scorec, list(id, target), mean)))
+dim(fcat)
+dim(scM)
+
+## (b) Histograms of scores for different attainment targets
+library(lattice)
+histogram(~scorec | target, data = fcat, # Fig. 3.11
+breaks = NULL)
+detach(package:lattice)
+```
+
+- `scM` is a tabulation of individual scores for all children.
+
+- The Histograms clearly illustrate the differences in the measurement scale for different targets, which result from the varying number of items per target. Some asymmetry of the distribution of the scores can also be observed.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

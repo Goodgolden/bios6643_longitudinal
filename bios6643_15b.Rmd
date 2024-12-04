@@ -1,0 +1,164 @@
+---
+title: "Missing Data and Dropout - part 2"
+author: "EJC"
+subtitle: "BIOS6643"
+institute: Department of Biostatistics & Informatics, CU Anschutz
+output:
+  beamer_presentation:
+    template: template_00.tex
+    theme: Goettingen
+    colortheme: rose  
+    slide_level: 2
+    toc: true
+    keep_tex: true
+    latex_engine: xelatex
+    dev: cairo_pdf
+    fig_caption: no
+    fig_crop: no
+fontsize: 9pt
+make149: yes
+header-includes:
+- \AtBeginSubsection{}
+- \AtBeginSection{}
+---
+\newcommand{\textcm}{\textcolor{magenta}}
+```{r setup, include=FALSE, cache=F, message=F, warning=F, results="hide"}
+## setup directory
+# setwd()
+knitr::opts_chunk$set(cache = TRUE, echo = FALSE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(fig.height = 4, fig.width = 5, out.width = '50%', fig.align='center')
+knitr::opts_chunk$set(fig.path = 'figs_L14/', cache.path = 'cache/')
+```
+
+# Case study I: weight loss trial
+
+## Weight loss trial
+- Randomized trial at the subject level to compare a toolboox intervention versus usual care in the primary care setting (reported in Saxon (2019 J Gen Intern Med))
+
+- The toolbox consisted of: partial meal replacement program, Weight Watchers vouchers, recreation center membership, phentermine-topiramate ER, phentermine, or a group behavioral weight loss program (Colorado Weigh). 
+
+  - After 6 months of participation in the study, participants add a second tool, or add 
+  - A Diabetes Prevention Program-based weight loss maintenance program
+
+- Study was conducted at 9 primary care clinics at Denver Health (DH)
+
+- Participants were randomly selected from the DH registry 
+
+##
+- The primary outcome was percentage of participants who achieved 5% weight loss at 12 months in those offered the toolbox of weight loss options compared with the usual care group. 
+
+- Secondary outcomes included weight loss tools chosen, weight loss tool utilization, and visit attendance.
+
+- 305 individuals were randomly selected to be offered intervention, and 2640 were eligible comparators in the usual care group
+
+- 119 individuals had a baseline visit (305-119=186 did not consent or did not attend baseline visit)
+
+
+## Demographic and baseline characteristics
+
+```{r "fig1", echo=FALSE, out.width='110%'}
+knitr::include_graphics('figs_L15/fig-weightloss-1.png')
+```
+
+
+## Exploring visits 
+```{r "fig2", echo=FALSE, out.width='75%'}
+knitr::include_graphics('figs_L15/fig-weightloss-2.png')
+```
+
+##
+```{r "fig3",echo=FALSE, out.width='90%'}
+knitr::include_graphics('figs_L15/fig-weightloss-3.png')
+```
+
+## Main results of trial
+```{r "fig4", echo=FALSE, out.width='120%'}
+knitr::include_graphics('figs_L15/fig-weightloss-4.png')
+```
+
+## Longitudinal model results
+
+```{r "fig5", echo=FALSE, out.width='110%'}
+knitr::include_graphics('figs_L15/fig-weightloss-5.png')
+```
+
+## Model in SAS
+```{r "fig7", echo=FALSE, out.width='120%'}
+knitr::include_graphics('figs_L15/fig-weightloss-7.png')
+```
+
+## Sensitivity analyses to missing final weight
+
+```{r "fig6", echo=FALSE, out.width='110%'}
+knitr::include_graphics('figs_L15/fig-weightloss-6.png')
+```
+
+
+# Case study II: STEPPED Care trial
+## Stepped care trial
+STEPPED-CARE randomized trial. Results from real data included here.
+
+- A behavioral intervention was tested versus usual care in 286 patients with lung or head and neck cancer.  
+- Population: low income patients in the Denver area across 5 hospitals
+- Primary outcomes: anxiety, depression and coping skills scores
+- Outcomes were measured at baseline, and at 6, 12 and 24 weeks
+
+
+## Demographic characteristics, death and lost to followup
+
+```{r "fig.step1", echo=FALSE, out.width='110%'}
+knitr::include_graphics('figs_L15/fig-steppedt-1.png')
+```
+
+```{r "fig.step2", echo=FALSE, out.width='110%'}
+knitr::include_graphics('figs_L15/fig-steppedt-2.png')
+```
+
+## Longitudinal model results
+```{r "fig.step3", echo=FALSE, out.width='110%'}
+knitr::include_graphics('figs_L15/fig-steppedt-3.png')
+```
+
+## Missing 
+```{r "fig.step4", echo=FALSE, out.width='110%'}
+knitr::include_graphics('figs_L15/fig-steppedt-4.png')
+```
+
+
+## Longitudinal model results adjusting for variables that are associated with missing
+```{r "fig.step5", echo=FALSE, out.width='110%'}
+knitr::include_graphics('figs_L15/fig-steppedt-6.png')
+```
+
+# Case study III: Hormone therapy trial
+## Hormone therapy trial to improve hot flushes/flashes
+
+- Counts of the number of hot flushes per day over a period of one year, along with a daily severity level of the hot flushes, were recorded 
+
+- 38 healthy women were randomized to medroxyprogesterone acetate (MPA) versus conjugated equine oestrogen (CEE, gold standard)
+    - 20 women were in the MPA group and 18 in the CEE group
+
+- The objective was to investigate if MPA reduced the number of hot flushes (and the their severity)
+
+## Missing data might be NMAR
+```{r "fig.horm1", echo=FALSE, out.width='110%'}
+knitr::include_graphics('figs_L15/fig-hormone-1.png')
+```
+
+## Joint model to address potentially informative visit process
+
+- Joint model of 
+
+  - counts of hot flashes daily - Poisson with random effects over time
+  
+  - visit process (whether information was non-missing on a given day) - logistic longitudinal model
+  
+  - results reported in Juarez-Colunga (2017 Biometrics)
+  
+  \medskip
+  
+- Look at the results in the counts submodel. This sensitivity analysis only tests for informative missing of the type considered.
+
+
+
+

@@ -1,0 +1,75 @@
+---
+title: "BIOS6643. L8 Covariance Structures $R_i$"
+cheauthor: "EJC"
+-- date: "" 
+header-includes:
+   - \usepackage{amsmath}
+   - \usepackage{float}
+output: pdf_document
+---
+
+\newcommand{\bi}{\begin{itemize}}
+\newcommand{\ei}{\end{itemize}}
+\newcommand{\itt}{\item}
+
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- -->
+
+
+```{r installp, echo = FALSE, eval=T, include=F}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(nlme)
+## library(SASmarkdown)
+
+```
+
+```{r include=FALSE}
+# set up the options so that knit knows where you SAS executable is
+# set the line size to be easily readable on letter size paper, portrait
+# and set the knitr options using opts_chunk$set().
+sasopts <- "-nosplash -linesize 75"
+saspath <- "C:/Program Files/SASHome/SASFoundation/9.4/sas.exe"
+## those two parts should have been universal 
+## just copy and paste into your Rmarkdown files
+knitr::opts_chunk$set(engine = "sas", 
+                      engine.path = saspath, 
+                      engine.opts = sasopts, 
+                      comment = NA)
+
+```
+
+
+
+
+```{r engine="sas", engine.path="C:/Program Files/SASHome/SASFoundation/9.4/sas.exe", engine.opts="-nosplash -linesize 75", collectcode=TRUE}
+
+
+proc import DATAFILE='C:\Users\juarezce\OneDrive - The University of Colorado Denver\BIOS6643\BIOS6643_Notes\data\dental.csv'
+  replace out=dental dbms=csv; run;
+
+ proc print data=dental(obs=2);run;
+
+  
+  title '(a) DIAGONAL WITHIN-CHILD COVARIANCE MATRIX R_i';
+title2 'WITH CONSTANT VARIANCE SAME FOR EACH GENDER';
+title3 'SAME D MATRIX FOR BOTH GENDERS';
+proc mixed method=ml data=dent1;
+  class gender id;
+  model distance = gender gender*age / noint solution;
+  random intercept age / type=un subject=child g gcorr v vcorr;
+
+* comparison of mean slopes and whether mean intercepts and slopes;
+* coincide for each gender;
+
+  estimate 'diff in mean slope' gender 0 0 gender*age 1 -1;
+  contrast 'overall gender diff' gender 1 -1, gender*age 1 -1 /chisq;
+run;
+  /* */
+  
+```

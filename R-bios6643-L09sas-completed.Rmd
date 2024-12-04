@@ -1,0 +1,161 @@
+---
+title: "BIOS6643. L09 Specifying both G and R"
+cheauthor: "EJC"
+-- date: "" 
+header-includes:
+   - \usepackage{amsmath}
+   - \usepackage{float}
+output: pdf_document
+---
+
+\newcommand{\bi}{\begin{itemize}}
+\newcommand{\ei}{\end{itemize}}
+\newcommand{\itt}{\item}
+
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- -->
+
+
+```{r installp, echo = FALSE, eval=T, include=F}
+library(SASmarkdown)
+
+```
+
+```{r include=FALSE}
+# set up the options so that knit knows where you SAS executable is
+# set the line size to be easily readable on letter size paper, portrait
+# and set the knitr options using opts_chunk$set().
+sasopts <- "-nosplash -linesize 75"
+saspath <- "C:/Program Files/SASHome/SASFoundation/9.4/sas.exe"
+## those two parts should have been universal 
+## just copy and paste into your Rmarkdown files
+knitr::opts_chunk$set(engine = "sas", 
+                      engine.path = saspath, 
+                      engine.opts = sasopts, 
+                      comment = NA)
+
+```
+
+
+The RANDOM statement may be used with TYPE=UN
+  and possibly the GROUP= option to specify the among-individual
+  covariance matrix G (possibly different by levels of GROUP).  
+
+The REPEATED statement may be used with various TYPE= specifications,
+   and possibly the GROUP = option with SUBJECT = to 
+  specify the within-individual covariance matrix R_i.
+  
+
+```{r engine="sas", engine.path="C:/Program Files/SASHome/SASFoundation/9.4/sas.exe", engine.opts="-nosplash -linesize 75", collectcode=TRUE}
+
+
+proc import DATAFILE='C:\Users\juarezce\OneDrive - The University of Colorado Denver\BIOS6643\BIOS6643_Notes\data\dental.csv'
+  replace out=dental0 dbms=csv; run;
+
+data dental; 
+  set dental0;
+  time=age;
+run;
+
+ proc print data=dental(obs=2);run;
+
+  
+  
+  title '(a) DIAGONAL WITHIN-CHILD COVARIANCE MATRIX R_i';
+title2 'WITH CONSTANT VARIANCE SAME FOR EACH GENDER';
+title3 'SAME G MATRIX FOR BOTH GENDERS';
+proc mixed method=ml data=dental;
+  class gender id;
+  model distance = gender gender*age / noint solution;
+  random intercept age / type=un subject=id g gcorr v vcorr;
+
+run;
+  
+  
+/******************************************************************
+  
+   MODEL (b)
+
+    Fit the same model as (a) but with a separate diagonal Ri matrix for
+   each gender.  Thus, there are 2 separate variances sigma^2_(G and B)
+   specified using GROUP=GENDER in the REPEATED statement
+
+   D still = (2x2) unstructured matrix same for both genders as in (a)
+   (specified in the RANDOM statement)
+
+*******************************************************************/
+    
+title '(b) DIAGONAL WITHIN-CHILD COVARIANCE MATRIX R_i';
+title2 'WITH SEPARATE CONSTANT VARIANCE FOR EACH GENDER';
+title3 'SAME D MATRIX FOR BOTH GENDERS';
+proc mixed  method=ml data=dental; 
+  class  id gender;
+  model distance = gender gender*age / noint solution;
+  repeated / group=gender subject=id r=1,4 rcorr=1,4;
+  random intercept age / type=un subject=id g gcorr v=1,4 vcorr=1,4;
+run;
+
+
+    
+   /******************************************************************
+MODEL (b2)
+
+   *******************************************************************/
+   
+  title '(c) COMMON AR(1) WITHIN-CHILD REALIZATION COMPONENT AND';
+title2 'COMMON WITHIN-CHILD COMPONENT FOR R_i';
+title3 'SAME G MATRIX FOR BOTH GENDERS';
+proc mixed method=ml data=dental;
+  class gender id time;
+  model distance = gender gender*age / noint solution ;
+  random intercept age / type=un subject=id g gcorr v vcorr;
+  repeated / type=ar(1) subject=id rcorr r;
+  
+run;
+  
+   
+   /******************************************************************
+
+     
+   *******************************************************************/
+   
+   
+title '(d) COMMON AR(1) WITHIN-CHILD REALIZATION COMPONENT AND';
+title2 'COMMON WITHIN-CHILD COMPONENT FOR R_i';
+title3 'USING EXPONENTIAL MODEL; SAME G MATRIX FOR BOTH GENDERS';
+proc mixed method=ml data=dental;
+  class gender id age;
+  model distance = gender gender*age / noint solution ;
+*  random intercept age / type=un subject=id g gcorr v vcorr;
+  repeated  age / type=sp(exp)(age) subject=id rcorr r;
+run;
+   
+/******************************************************************
+
+   MODEL (b2)
+
+   Fit the same model as (b) but now with D a (2x2) unstructured
+   matrix different across genders, so there are two matrices G_Girls and G_Boys
+   This is specified in the RANDOM statement by the GROUP=GENDER option
+
+*******************************************************************/
+    
+title '(b2) DIAGONAL WITHIN-CHILD COVARIANCE MATRIX R_i';
+title2 'WITH SEPARATE CONSTANT VARIANCE FOR EACH GENDER';
+title3 'DIFFERENT G MATRIX FOR BOTH GENDERS';
+proc mixed  method=ml data=dental; 
+  class  id gender;
+  model distance = gender gender*age / noint solution;
+  repeated / group=gender subject=id;
+  random intercept age / type=un group=gender subject=id g gcorr v=1,12 vcorr=1,12;
+run;
+
+
+
+  /* */
+  
+```

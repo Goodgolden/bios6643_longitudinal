@@ -1,0 +1,250 @@
+---
+title: "BIOS6643. L14 Review exercises"
+cheauthor: "EJC"
+-- date: "" 
+header-includes:
+   - \usepackage{amsmath}
+   - \usepackage{float}
+output: pdf_document
+---
+
+\newcommand{\bi}{\begin{itemize}}
+\newcommand{\ei}{\end{itemize}}
+\newcommand{\itt}{\item}
+
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- -->
+
+
+```{r installp, echo = FALSE, eval=T, include=F}
+##library(dplyr)
+library(tidyverse)
+library(multcomp)
+library(nlme)
+library(lme4)
+
+
+```
+
+
+
+# Question 1. Models for Beta Carotene Data
+
+Using the Beta carotene dataset, answer the following questions using a mixed model with no random effects but an unstructure covariance R.  
+
+  a. Estimate the mean response (beta carotene level) at all weeks in Roche (group2) and BASF 30mg (group 3). 
+
+  b. Test for an interaction between Roche (group2) and BASF 30mg (group 3).
+  
+  c. Test the hypothesis that the 4 groups differ at 6 weeks 
+
+
+```{r "beta_mod1"}
+## import data beta
+beta <- read.csv("/Users/juarezce/Documents/OneDrive - The University of Colorado Denver/BIOS6643/BIOS6643_Notes/data/beta_carotene_univar.csv",
+               header=TRUE) 
+head(beta,3)
+names(beta) <- c("prepar", "id", "y", "time")
+#  mutate(time = as.integer(time))
+
+mod1 <- gls(y ~ 1 + factor(time) * factor(prepar), 
+            ## UN for correlation! not covariance
+            correlation = corSymm(form = ~1|id),
+            ## for unequal variance over time
+            weights = varIdent(form = ~1|time),
+            method = "REML",
+            data = beta)
+```
+
+\normalsize
+
+\textcolor{blue}{a. Estimate the mean response (beta carotene level) at all weeks in group 2 and in group 3. }
+
+```{r "get_contrast"}
+## fixed effects
+# beta_hat <- fixed.effects(mod1)
+beta_hat <- coef(mod1)
+## fixed effects variance-covariance
+covb <- vcov(mod1) 
+
+## mean group 2
+mu2 <- matrix(NA, 5, 2)
+## mean  group 3
+mu3 <- matrix(NA, 5, 2)
+
+##             int   time           prepar    prepar=2*ti    prepar=3*ti     prepar=4*ti
+c21  <-     c( 1,   0, 0, 0, 0,   1, 0, 0,    0, 0, 0, 0,    0, 0, 0, 0,     0, 0, 0, 0) 
+c22  <-     c( 1,   1, 0, 0, 0,   1, 0, 0,    1, 0, 0, 0,    0, 0, 0, 0,     0, 0, 0, 0) 
+c23  <-     c( 1,   0, 1, 0, 0,   1, 0, 0,    0, 1, 0, 0,    0, 0, 0, 0,     0, 0, 0, 0) 
+c24  <-     c( 1,   0, 0, 1, 0,   1, 0, 0,    0, 0, 1, 0,    0, 0, 0, 0,     0, 0, 0, 0) 
+c25  <-     c( 1,   0, 0, 0, 1,   1, 0, 0,    0, 0, 0, 1,    0, 0, 0, 0,     0, 0, 0, 0) 
+
+##             int   time           prepar    prepar=2*ti    prepar=3*ti     prepar=4*ti
+c31  <-     c( 1,   0, 0, 0, 0,   0, 1, 0,    0, 0, 0, 0,    0, 0, 0, 0,     0, 0, 0, 0) 
+c32  <-     c( 1,   1, 0, 0, 0,   0, 1, 0,    0, 0, 0, 0,    1, 0, 0, 0,     0, 0, 0, 0) 
+c33  <-     c( 1,   0, 1, 0, 0,   0, 1, 0,    0, 0, 0, 0,    0, 1, 0, 0,     0, 0, 0, 0) 
+c34  <-     c( 1,   0, 0, 1, 0,   0, 1, 0,    0, 0, 0, 0,    0, 0, 1, 0,     0, 0, 0, 0) 
+c35  <-     c( 1,   0, 0, 0, 1,   0, 1, 0,    0, 0, 0, 0,    0, 0, 0, 1,     0, 0, 0, 0) 
+
+## calculating estimates of linear combination
+## function to calculate linear combination  of beta parameters: est and SE (standard error)
+## input: lvec, vector to calculate linear combination
+## output: c(est, SE), point estimate and SE
+f.lbeta <- function(lvec){
+ est <- t(lvec) %*% beta_hat  
+ se <- sqrt(t(lvec) %*% covb %*% lvec)
+ return(c(est, se))
+}
+
+mu2[1,] <- f.lbeta(c21)
+mu2[2,] <- f.lbeta(c22)
+mu2[3,] <- f.lbeta(c23)
+mu2[4,] <- f.lbeta(c24)
+mu2[5,] <- f.lbeta(c25)
+## MEANs for group 2
+mu2
+
+mu3[1,] <- f.lbeta(c31)
+mu3[2,] <- f.lbeta(c32)
+mu3[3,] <- f.lbeta(c33)
+mu3[4,] <- f.lbeta(c34)
+mu3[5,] <- f.lbeta(c35)
+## MEANs for group 3
+mu3
+
+```
+The means for group are higher. Note we could plot them and typically accompany the interaction test in b with a figure or table of these means (or the mean difference).   
+
+\normalsize
+
+\newpage
+\textcolor{blue}{  b. Test for an interaction between Roche (group2) and BASF 30mg.}
+To answer this question we may think about the differences between each time point versus baseline and then the differences between groups. 
+
+```{r "contrast"}
+
+
+
+contr0 <- cbind(c22-c21-(c32-c31), c23-c21-(c33-c31), c24-c21-(c34-c31), c25-c21-(c35-c31))
+t(contr0)
+
+## contrast point estimates to be
+ce0 <- t(contr0) %*% beta_hat
+## contrast variance covariance matrix
+cov0 <- t(contr0) %*% covb %*% contr0
+
+## 
+W0 <- t(ce0) %*% solve(cov0) %*% ce0
+pchisq(W0, df = 4, lower.tail = FALSE)
+
+
+## emmeans is a package cover 
+test1 <- multcomp::glht(mod1, t(contr0))
+summary(test1, test = Chisqtest())
+```
+
+\normalsize
+There is a significant interaction between Roche (group2) and BASF 30mg. 
+
+
+
+
+
+
+c.	Conduct a test to compare if the 6 week - baseline value differs between the 4 $groups$.
+
+
+
+```{r}
+
+##             int   time           prepar    prepar=2*ti    prepar=3*ti     prepar=4*ti
+c11  <-     c( 1,   0, 0, 0, 0,   0, 0, 0,    0, 0, 0, 0,    0, 0, 0, 0,     0, 0, 0, 0) 
+c12  <-     c( 1,   1, 0, 0, 0,   0, 0, 0,    0, 0, 0, 0,    0, 0, 0, 0,     0, 0, 0, 0) 
+c13  <-     c( 1,   0, 1, 0, 0,   0, 0, 0,    0, 0, 0, 0,    0, 0, 0, 0,     0, 0, 0, 0) 
+c14  <-     c( 1,   0, 0, 1, 0,   0, 0, 0,    0, 0, 0, 0,    0, 0, 0, 0,     0, 0, 0, 0) 
+c15  <-     c( 1,   0, 0, 0, 1,   0, 0, 0,    0, 0, 0, 0,    0, 0, 0, 0,     0, 0, 0, 0) 
+
+##             int   time           prepar    prepar=2*ti    prepar=3*ti     prepar=4*ti
+c41  <-     c( 1,   0, 0, 0, 0,   0, 0, 1,    0, 0, 0, 0,    0, 0, 0, 0,     0, 0, 0, 0) 
+c42  <-     c( 1,   1, 0, 0, 0,   0, 0, 1,    0, 0, 0, 0,    0, 0, 0, 0,     1, 0, 0, 0) 
+c43  <-     c( 1,   0, 1, 0, 0,   0, 0, 1,    0, 0, 0, 0,    0, 0, 0, 0,     0, 1, 0, 0) 
+c44  <-     c( 1,   0, 0, 1, 0,   0, 0, 1,    0, 0, 0, 0,    0, 0, 0, 0,     0, 0, 1, 0) 
+c45  <-     c( 1,   0, 0, 0, 1,   0, 0, 1,    0, 0, 0, 0,    0, 0, 0, 0,     0, 0, 0, 1) 
+
+## mean group 2
+mu1 <- matrix(NA, 5, 2)
+## mean  group 3
+mu4 <- matrix(NA, 5, 2)
+
+mu1[1,] <- f.lbeta(c11)
+mu1[2,] <- f.lbeta(c12)
+mu1[3,] <- f.lbeta(c13)
+mu1[4,] <- f.lbeta(c14)
+mu1[5,] <- f.lbeta(c15)
+## MEANs for group 1
+mu1
+
+mu4[1,] <- f.lbeta(c41)
+mu4[2,] <- f.lbeta(c42)
+mu4[3,] <- f.lbeta(c43)
+mu4[4,] <- f.lbeta(c44)
+mu4[5,] <- f.lbeta(c45)
+## MEANs for group 4
+mu4
+
+contr2 <- cbind(c25-c21 - (c15 -c11), 
+                c35-c31 - (c15 -c11), 
+                c45-c41 - (c15 -c11))
+## contrast point estimates to be
+(ce2 <- t(contr2) %*% beta_hat)
+## contrast variance covariance matrix
+cov2 <- t(contr2) %*% covb %*% contr2
+
+## with both point estimates and standard deviation 
+## an anova or pairwise comparison can be performed
+W2 <- t(ce2) %*% solve(cov2) %*% ce2
+pchisq(W2, df = 3, lower.tail = FALSE)
+```
+
+
+```{r "contrast2_glht"}
+## emmeans is a package cover 
+test2 <- multcomp::glht(mod1, t(contr2))
+summary(test2, test = Chisqtest())
+```
+
+
+# Question 2. Models for Stepped Care Data
+## STEPPED-CARE randomized trial
+The dataset we will use in class resembles the trial.
+
+- A behavioral intervention was tested versus usual care in 286 patients with lung or head and neck cancer.  
+- Population: low income patients in the Denver area across 5 hospitals
+- Primary outcomes: anxiety, depression and coping skills scores
+- Outcomes were measured at baseline, and at 6, 12 and 24 weeks
+
+Consider the stepped care data. Use a linear mixed model with time as continuous variable and random intercepts and random slopes. Assume there are no differences in coping self-efficacy score (CSES) at baseline. 
+
+  a. Estimate the mean CSES at 6 weeks for both intervention groups. 
+  
+  b. Estimate the mean CSES difference at 6 weeks. 
+  
+  c. Test the hypothesis that the mean difference 12 weeks - baseline differs across the two treatment groups.
+  
+
+
+
+```{r "read stepped-care", eval=T, echo=TRUE, include=TRUE}
+# Read in data 
+dat.step <- read.csv("/Users/juarezce/Documents/OneDrive - The University of Colorado Denver/BIOS6643/BIOS6643_Notes/data/stepped-care-class.csv", header=TRUE)
+
+head(dat.step, 3)
+
+
+
+```
+

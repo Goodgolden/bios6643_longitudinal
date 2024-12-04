@@ -1,0 +1,399 @@
+---
+title: "lmmur_05"
+author: "Randy"
+date: "9/6/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Chapter 5 Fitting Linear Models with Homogeneous Variance: The `lm()` and `gls()` Functions
+
+## 5.2 Specifying the Mean Structure Using a Model Formula
+
+Each term on the right-hand side of a
+model formula contributes one or more columns to the design matrix. 
+
+`f1 * f2` is interpreted as `f1 + f2 + f1:f2`
+
+The `%in%` operator denotes factor nesting: `f3 %in% f1` is interpreted as `f3:f1`.
+
+The term `f1/f3` is interpreted as `f1 + f1:f3`.
+
+```
+> y ~ f1*f2 # ANOVA with two-way interaction
+> y ~ f1 + f3 %in% f1 # f3 nested within f1
+> y ~ f1/f3 # ... equivalent specification
+> y ~ (x1 + f1 + f2)^2 # Up to 2nd order interactions
+> y ~ -1 + x1 # Intercept removed
+```
+
+```{r}
+knitr::include_graphics("figure/lmmur_t_5.2.png")
+```
+
+#### 5.2.1.2 Composite Terms
+
+```
+## (a) Composite terms
+> y ~ sqrt(x1) + x2 # Square root transformation of x1
+> y ~ ordered(x1, breaks) + poly(x1, 2) # Ordered factor created and second degree polynomial added
+> y ~ poly(x1, x2, 2) # Bivariate quadratic surface for x1 and x2
+> log(y) ~ bs(x1, df = 3) # log transform for y modeled by using B-spline for x1
+> y ~ f1*bs(x1, df = 3) - 1 # Factor by spline interaction with intercept omitted
+
+
+## (b) Use of the I() and update() functions
+> form2 <- y ~ I(x1 + 100/x2) # I() function
+> update(form2, . ~ . + x3) # x3 predictor added to form2
+> update(form2, . ~ . -1) # Intercept omitted from form2
+```
+
+The function `I()` is potentially different meanings of operators used in a formula.
+
+Two meanings: the default and the arithmetic meaning. 
+
+Given the two possible meanings of the formula operators, 
+it is prudent to indicate the intended meaning in the defined formula. 
+
+Toward this end, the use of the function `I()` is recommended. 
+
+The operators used within the scope of the function are given the arithmetic (nondefault) meaning.
+
+
+### 5.2.2 Representation of R Formula: The terms Class
+
+Creating an object of class terms is an important step in building the design matrix
+
+
+- The names of the attributes are obtained by applying a superposition of two functions, namely, `names()` and `attributes()`, to the object termsA.
+
+```{r}
+## (a) A formula with an intercept and interaction term
+formA <- y ~ f1*f2 # Formula A
+termsA <- terms(formA) # Object of class terms
+names(attributes(termsA)) # Names of attributes
+
+labels(termsA) # Terms; interaction after main effects
+attr(termsA, "order") # Interaction order for each term
+attr(termsA, "term.labels")
+attr(termsA, "response")
+attr(termsA, "class")
+attr(termsA, ".Enviornment")
+attr(termsA, "intercept") # Intercept present?
+attr(termsA, "factors")
+attr(termsA, "variables") # Variable names
+
+
+## (b) A formula without the intercept and interaction term
+formB <- update(formA, . ~ . - f1:f2 -1) # Formula B
+termsB <- terms(formB)
+labels(termsB) # Terms of formula B
+attr(termsB, "intercept") # Intercept omitted
+
+?terms.merMod
+?terms.formula
+?terms.object
+```
+
+- To conclude, we note that the specialized objects of class terms are rarely created
+by the data analyst. 
+
+- However, they may be useful to get additional insight into
+several features of a given formula.
+
+## 5.2 From a Formula to the Design Matrix
+
+First, a model frame is created based on available data. Then, the design matrix is itself constructed. 
+
+Note that these steps are rarely performed in practice by the data analyst. 
+
+Instead, they are carefully implemented inside many model-fitting functions, such as `lm()`, `gls()`, `lme()`, and others. 
+
+We introduce the process of creating a design matrix for illustration purposes and to avoid the "black box" impression for the model fitting functions.
+
+### 5.3.1 Creating a Model Frame
+
+```{r}
+knitr::include_graphics("figure/lmmur_f_5.1.png")
+```
+
+#### 5.3.1.1 Arguments of the `model.frame()` Function
+
+- The function `model.frame()` is an example of a function that interprets a formula in the context of arbitrary data. 
+
+- This type of functions typically uses at least four arguments: formula, data, subset, and na.action. 
+
+The default value for the na.action argument is na.omit, which points to the generic function `na.omit()`. 
+
+The function removes the records with missing values from the data. Another possible function is the `na.exclude()` function. 
+
+#### 5.3.1.2 Creating a Model Frame: An Illustration
+
+```{r}
+data(armd.wide, package = "nlme")
+## (a) Formula
+form1 <- formula(visual52 ~ # Dependent variable
+                   sqrt(line0) + # Continuous explanatory variable
+                   factor(lesion) + # Factor with 4 levels
+                   treat.f * log(visual24) + # Crossing of two variables
+                   poly(visual0, 2)) # Polynomial of 2nd degree
+
+## (b) Model frame
+data(armd.wide, package = "nlmeU") # Data loaded
+armd.mf1 <- model.frame(form1, # Formula
+                        # Data frame
+                        data = armd.wide, 
+                        # Exclude two subjects
+                        subset = !(subject %in% c("1", "2")),
+                        # Dealing with missing data
+                        na.action = na.exclude, 
+                        # Identifier of data records
+                        SubjectId = subject) 
+class(armd.mf1)
+# Data frame dimensions
+dim(armd.wide) 
+# Model frame dimensions
+dim(armd.mf1) 
+# Components of the model frame
+names(armd.mf1) 
+# head(armd.mf1, n = 5)
+# View(armd.mf1$`poly(visual0, 2)`)
+```
+
+This additional column was included in the model frame by setting the argument
+SubjectId = subject in the call of the model.frame() function, not from the formula.
+
+The specification of the argument *SubjectId = subject* in the call of the `model.frame()` function is an example of the argument assignment of the form *model.frame.var = data.var*. 
+
+In the assignment, *data.var* is a variable that should be additionally included in the model frame.
+
+Although the model frame is an object of class data.frame, there are some
+differences between model frames and data frames. 
+
+- An important difference is that there are no restrictions for variable names included in a model frame. For example, *poly(time,2)* and *log(visual0)* are valid variable names in a model frame.
+
+- Another difference is the presence of the terms attribute in the model frame. An important difference between the model frame and the data frame is the presence of the terms attribute.
+
+#### 5.3.1.3 Features of the terms Attribute
+
+```{r}
+terms.mf1 <- attr(armd.mf1, "terms") # terms attribute
+str(armd.mf1)
+class(terms.mf1)
+names(attributes(terms.mf1)) # Names of attributes
+
+attr(terms.mf1, "dataClasses") # dataClasses attribute
+attr(terms.mf1, "predvars") # predvars attribute
+labels(terms.mf1) # Component names
+```
+
+- First, using the `attr()` function, we obtain the terms attribute and store it in the object named *terms.mf1*. Note that *terms.mf1* is an object of class terms, which inherits from the class formula.
+
+- The difference lies in the presence of two additional attributes, *dataClasses* and *predvars*. 
+  - The attribute *dataClasses* contains the information about how each component of the model frame is interpreted in the design matrix, e.g., whether it is a numeric variable, a factor, or a matrix. 
+  
+  - The attribute *predvars* contains a list of expressions that are used to evaluate the components of the model frame when applied to a data frame.
+
+
+#### 5.3.1.4 Note on Data-Dependent Functions: poly(), bs(), ns()
+
+- observation-by-observation functions, such as log() and sqrt()
+
+- data-dependent functions include, but are not limited to, functions `bs()` and `ns()`
+
+A working definition of a data-dependent function is that its returned value depends on all elements of the vector used as an argument. 
+
+Thus, the function requires a pass over all rows of the data. 
+
+To avoid ambiguity in what is meant by 'all' values, it should be mentioned that it is neither advisable nor possible to apply these functions to vector(s) containing missing values.
+
+- The use of the argument subset in a call to the function `model.frame()` does not affect the argument used by the data-dependent functions.
+
+- all 240 observations are used in deriving the coefficients of the polynomial specified by the `poly()` function, regardless of the values of the *subset*
+and *na.action* arguments used in the `model.frame()` function.
+
+- The polynomial coefficients are stored in the *predvars* attribute of the *terms.mf1* object and can be reused by other functions. 
+
+- Examples of such functions include the `predict()` function, which may evaluate a model frame in the context of a dataset different from the one used to build the model frame. 
+
+- Otherwise, the functions would attempt to reevaluate the coefficients of the specified polynomial (or of another data-dependent function) using the newdataset. 
+
+- This could result in different numerical values of the coefficients. **Venables and Ripley (2010)** in the context of so-called ***safe prediction***
+
+### 5.3.2 Creating a Design Matrix
+
+#### 5.3.2.1 Illustration: Design Matrix
+
+```{r}
+# Design matrix
+# ?model.matrix
+# 
+## Default S3 method:
+# model.matrix(object, data = environment(object),
+#              contrasts.arg = NULL, xlev = NULL, ...)
+#              
+## model.matrix creates a design (or model) matrix, e.g.,
+## by expanding factors to a set of dummy variables 
+## (depending on the contrasts) and expanding interactions similarly.
+Xmtx <- model.matrix(form1, armd.mf1) 
+dim(Xmtx) # No rows and cols
+View(Xmtx)
+
+(nms <- colnames(Xmtx)) # Col names ...
+
+colnames(Xmtx) <- abbreviate(nms) # ... abbreviated
+print(head(Xmtx, n = 6), digits = 4) # First 6 rows
+
+names(attributes(Xmtx)) # Attribute names
+str(Xmtx)
+attr(Xmtx, "assign") # Cols to terms map
+
+attr(Xmtx, "contrasts") # Contrasts attribute
+
+```
+
+Note that the resulting matrix *Xmtx* has two additional attributes: *assign* and *contrasts*. 
+
+- The attribute assign provides a link between each column of the design matrix and a corresponding term in the expanded form of the model formula form1.
+- Thus, the factor contributes three columns to the design matrix.
+
+- The value of the attribute contrasts indicates that the function `contr.treatment()` was used to decode factors *factor(lesion)* and *treat.f* into corresponding columns of the design matrix *Xmtx*.
+
+Note that, in the call of the `model.matrix()` function, we used the formula
+form1 as the first argument. 
+
+In general, objects of other classes can also be used in the argument as long as the function `terms()` returns for them an object of class terms. 
+
+
+#### 5.3.2.2 Decoding Factors
+
+`factor()` or `ordered()` functions
+
+The contrast functions include `contr.treatment()`, `contr.sum()`, `contr.helmert()`, `contr.poly()`, and `contr.SAS()`.
+
+The first argument of all of the contrast functions indicates the number of the
+levels of the decoded factor. 
+
+The contrast matrices, created during the session shown are presented for the case of an artificial factor with three levels.
+
+
+```{r "R5.8"}
+## default base level = 1
+contr.treatment(5)
+## base level set up as 5
+## the same as contr.SAS(5)
+contr.treatment(5, base = 5)
+## sum up to 0
+contr.sum(5) 
+## helmet contrast
+contr.helmert(5)
+## polynomial contrasts
+contr.poly(3, scores=c(1, 5, 7))
+contr.poly(3)
+?contr.poly
+```
+
+The choice of the type of contrasts has implications for the interpretation of the parameters $\beta$ of an LM. 
+
+- the contrasts defined by the function `contr.treatment()` imply that the elements of the vector b can be treated as differences of the expected values of the dependent variable between a reference level and every other level of the factor.
+
+- the use of the `contr.sum()` contrasts implies that the elements can be interpreted as deviations between the expected values corresponding to the different levels of the factor and the overall mean of the dependent variable.
+
+- Thus, the `contr.SAS(3)` contrasts use the last level of the factor as the reference level, while `contr.treatment()`, by default, uses the first level as the reference.
+
+
+```{r}
+## (a) Extracting default contrasts
+options()$contrasts # Default contrasts
+getOption("contrasts")
+options(contrasts = c("contr.treatment", "contr.poly"))
+
+lesion.f <- factor(armd.wide$lesion) # Factor created
+str(lesion.f) # Structure
+names(attributes(lesion.f)) # Names of factor attributes
+levels(lesion.f) # Levels extracted
+contrasts(lesion.f) # Contrasts extracted
+
+## (b) Assigning a new set of contrasts using the C() function
+lesion2.f <- C(lesion.f, contr.sum(4)) # New contrasts using C()
+names(attributes(lesion2.f)) # Names of factor attributes
+# ?C # Sets Contrasts for a Factor
+
+contrasts(lesion2.f) # Contrasts extracted
+
+## (c) Assigning contrasts using the 
+## 'contrasts() <- contrast function' syntax
+lesion2a.f <- factor(lesion.f) # Factor copied
+contrasts(lesion2a.f) <- contr.sum(4)
+contrasts(lesion2a.f)
+contrasts(lesion2a.f, contrasts = FALSE)
+```
+
+
+- In Panel R5.9a, we invoke the function `options()` to obtain a list of
+the current values of the global options. 
+
+- By displaying the component contrasts of the list, we verify the names of the default functions, which are used to create matrices of contrasts for ordered and unordered factors. 
+
+
+- `contr.treatment()` for unordered and `contr.poly()` for ordered factors, is that, in studies with a balanced design, columns of the design matrix X become orthogonal.
+
+- Other choices of contrasts in LMs may introduce artificial correlations between the estimates, even for balanced designs. Thus, the choice of the contrasts involves a trade-off between the simplicity of the default choice and the interpretability of the estimates of the fixed effects, as discussed in the context of Panel R5.8.
+
+
+It is worth noting that all the contrast matrices considered in Panels R5.8 and R5.9 have k rows and k−1 columns, where k is the number of levels of the corresponding factor. 
+
+- By choosing such a contrast matrix, we avoid collinearity in the design
+matrices containing an intercept. 
+
+- More generally, by assigning a contrast matrix with at most k − 1 linearly independent columns, we avoid collinearity in a design matrix for any model containing all terms of lower order than a given factor or, more broadly, a term involving factor(s). 
+
+- However, in some cases like, e.g., of a model without an intercept, it is more appropriate to use a k × k identity matrix instead of a k × (k − 1) contrast. 
+
+- Such a choice is possible using the *contrasts=FALSE* argument of the contrasts() function.
+
+## 5.4 Using the `lm()` and `gls()` Functions to Fit a Linear Model
+
+- `lm()` implements the `OLS` estimation method (Sect. 4.4.1). 
+
+- An alternative is to use the function `gls()` from the nlme package, which uses the `ML` and `REML` estimation
+
+```{r}
+knitr::include_graphics("figure/lmmur_f_5.4.png")
+```
+
+- Other functions, which can be considered in this context, are `add1()` and `drop1()`.
+
+
+## 5.5 Extracting Information from a Model-Fit Object
+
+- Results of an LM, fitted using the lm() or gls() functions, are stored in an object of class lm or gls, respectively.
+
+- In general terms, there are at least two ways to extract the results from the objects representing model fits. 
+
+- An elegant and recommended way is using generic extractor functions such as print(), summary(), fitted(), coef(), vcov(), confint(), etc. 
+
+- However, if a method for extracting an interesting result of the model fit is not available, then it may need to be extracted directly from the appropriate component of the object (typically, a list), which represents the model fit.
+
+
+```{r}
+knitr::include_graphics("figure/lmmur_t_5.5.png")
+```
+
+- the F-tests (4.35) for continuous covariates and groups of contrasts corresponding to factors included in the model are obtained with the use of the generic `anova()` function. 
+
+- the marginal F-tests can be obtained using the type="marginal" argument of
+the `anova()` function.
+
+- Note that arguments type, Terms, and L are available only when the anova() function is applied to a model-fit object of class gls.
+
+- The anova() function can also be applied to more than one model-fit object. - In that case, when applied to model-fit object of class gls it provides the LR tests for nested models (Sect. 4.6.1), as well as the values of AIC and BIC for each of the models (Sect. 4.7.2).
+
+
+
+

@@ -1,0 +1,351 @@
+---
+title: "04_lmmur_chapter4"
+author: "Randy"
+date: "9/5/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# Chapter 4 Linear Models with Homogeneous Variance
+
+## 4.1 Introduction
+
+we consider the application of LMs to data originating from research studies, in which observations are independent.
+
+## 4.2 Model Specification
+
+
+## 4.3 Estimation
+
+### 4.4.1 Ordinary Least Squares
+
+$$
+\pmb {\hat \beta}_{OLS} = \big(\sum^n_{i=1} \pmb x_i \pmb x_i'\big)^{-1} \sum_{i=1}^n\pmb x_iy_i = (\pmb X'\pmb X)^{-1} \pmb X' \pmb y \ \ \ \ (4.12)
+$$
+
+$$
+\hat \sigma_{OLS}^2 = \frac 1 {n-p} \sum_{i=1}^n
+\big(y_i - \pmb x_i'\pmb {\hat \beta}_{OLS} \big)^2
+= \frac 1 {n-p} 
+\big(\pmb y - \pmb X'\pmb {\hat \beta}_{OLS} \big)'
+\big(\pmb y - \pmb X'\pmb {\hat \beta}_{OLS} \big)
+\ \ \ \ (4.13)
+$$
+
+- It is worth noting that the derivation of the OLS estimate does not require the normality assumption, specified by (4.2). 
+
+
+- Moreover, it is valid under the assumption of uncorrelated residual errors, which is a weaker assumption than the assumption of independence.
+
+- This is in contrast to the ML and REML estimation, which are presented in the next two sections.
+
+
+### 4.4.2 Maximum-Likelihood Estimation
+
+$$
+\pmb {\hat \beta}_{ML} = \big(\sum^n_{i=1} \pmb x_i \pmb x_i'\big)^{-1} \sum_{i=1}^n\pmb x_iy_i\ \ \ \ (4.17)
+$$
+
+$$
+\sigma^2_{ML} = \frac 1 n \sum^n_{i=1} \big(y_i − \pmb x_i \pmb {\hat \beta}_{ML}\big)^ 2 \ \ \ \ (4.18)
+$$
+
+- Note that (4.18) differs from (4.13). Indeed, $\sigma^2_{ML}$ is biased downwards by a factor $(n − p)/n$. 
+
+- This is because the uncertainty in the estimation of $\pmb \beta$ is not accounted
+for in (4.18). 
+
+- The bias is removed from (4.18) if the restricted maximum-likelihood (REML) estimation is used.
+
+### 4.4.3 Restricted Maximum-Likelihood Estimation
+
+$$
+l_{REML}(\sigma^2;\ y) ≡ − \frac {n − p} 2
+log(\sigma^2)− \frac 1 {2\sigma^2} \sum_{i=1}^nr^2_i\ \ \ \ (4.19)
+$$
+
+$$
+r_i = y_i - \pmb x_i'\big(\sum_{i=1}^n \pmb x_i \pmb x_i' \big)^{-1} \sum_{i=1}^n \pmb x_iy_i
+$$
+
+
+$$
+\hat \sigma^2_{REML} = \frac 1 {n-p} \sum_{i=1}^nr_i^2
+$$
+
+- Note that $\sum^n_{i=1} r_i^2$, used in $\sigma^2_{REML}$, is the same as in $\sigma^2_{ML}$, defined in (4.18). 
+
+- However, $n − p$ is used in the denominator in lieu of $n$, so $\sigma^2_{REML}$ is an unbiased estimator of $\sigma^ 2$.
+
+- The estimate $\hat \beta_{REML}$ of $\beta$ obtained using this method is equal to $\hat \beta_{ML}$.
+
+- This equality is true for the classical `LM`, given by (4.1) and (4.2), which assumes independent observations with homogeneous variance. 
+
+- However, it does not hold for models with less restrictive assumptions about the residual variance.
+
+- This `OLS-REML` equivalence for the classical LM with independent, homoscedastic (constant variance) residuals will not hold in general for more complex models 
+
+### 4.4.4 Uncertainty in Parameter Estimates
+
+$$
+Var(\pmb {\hat \beta} ) = \sigma^2 (\sum^n_{i=1}
+\pmb x_i \pmb x_i' ) ^{−1}
+= \sigma^2 (\pmb X' \pmb X)^{−1} \ \ \ \ (4.21)
+$$
+
+$$
+\widehat {Var}(\pmb {\hat \beta} ) = \hat \sigma^2 (\sum^n_{i=1}
+\pmb x_i \pmb x_i' ) ^{−1}
+= \hat \sigma^2 (\pmb X' \pmb X)^{−1} \ \ \ \ (4.22)
+$$
+
+- where $\hat \sigma^2$ is equal to $\hat \sigma^2_{OLS}$, $\hat \sigma^2_{ML}$, or $\hat \sigma^2_{REML}$, depending on the estimation method used.
+
+- It is worth noting that `OLS-` and `REML-`based estimates together with their estimated variance–covariance matrices, computed by using (4.22), are identical.
+
+- On the other hand, even though the `ML-` and `REML-`based estimates of $\beta$ are equal to each other, their estimated variance-covariance matrices are different. 
+
+- This is because the `ML-` and `REML-`based estimators of $\hat \sigma^2$, defined in (4.18) and (4.20), respectively, differ.
+
+- In fact, given the bias of $\hat \sigma^2_{ML}$, one should consider the variance-covariance matrix of $\hat \beta$ based on $\hat \sigma^2_{REML}$, especially in small sample size studies.
+
+## 4.5 Model Diagnostics
+
+### 4.5.1 Residuals
+
+#### 4.5.1.1 Raw Residuals
+
+#### 4.5.1.2 Scaled Residuals
+
+- We note that by replacing $\hat \sigma$ with $\hat \sigma_{(-i)}$ the external studentization technique (**jackknif residuals**) allows for outliers to stand out in a more prominent fashion compared to the internal one.
+
+- The raw residuals are often scaled, i.e., divided by their true or estimated standard deviations, so that their interpretation does not depend on the measurement units of the dependent variable.
+
+- The scaling of raw residuals presented in Table 4.1 does not address an important issue, however, which is the fact that the variances of the residuals, $\hat \epsilon_i$, differ, even though the variances of the true errors, $\epsilon_i$, are all equal.
+
+$$
+\pmb H \equiv \pmb X(\pmb X'\pmb X)^{−1}\pmb X'.
+$$
+
+- The matrix is referred to as the leverage matrix or the hat matrix.
+
+- a rationale for using the hat matrix to scale residuals: the vector of raw residuals $\pmb {\hat \epsilon} = \pmb y − \pmb X \pmb {\hat \beta}$ for all data can be expressed with the use of the matrix $\pmb H$ as follows:
+
+$$
+\pmb {\hat \epsilon} = \pmb y − \pmb X \pmb {\hat \beta} = (\pmb I_n − \pmb H)\pmb y \ \ \ \ (4.24)
+$$
+
+$$
+Var(\pmb {\hat \epsilon}) = \sigma^2(\pmb I_n − \pmb H) \ \ \ \ (4.25)
+$$
+
+- In case the matrix $\pmb H$ in (4.25) is not proportional to $\pmb I_n$, the raw residuals are potentially heteroscedastic and/or correlated. 
+
+- Thus, direct interpretation of the raw residuals may not be straightforward. 
+
+- Moreover, as already mentioned, the scaled residuals, presented in Table 4.1, do not address the issue of heteroscedasticity and/or correlation.
+
+```{r}
+knitr::include_graphics(c("figure/lmmur_t_4.1.png", "figure/lmmur_t_4.2.png"))
+```
+
+- To tackle the problem of unequal variances of the residuals from Table 4.1, a scaling that involves the $\pmb H$ matrix can be used. 
+
+- scaled by standard error estimates involving diagonal elements $h_{i,i}$ of the $\pmb H$ matrix. 
+
+- Note that the scaling addresses the problem of heteroscedasticity of the raw residuals, but does not remove the correlation between the scaled residuals. 
+
+- To address this, error recovery methods are used.
+
+#### Error Recovery
+
+- The general idea in these approaches is to transform the residuals in such a way that the transformed residuals have a zero mean, a constant variance, and become uncorrelated. 
+
+- The $n \times n$ matrix $\pmb P \equiv \pmb I_n − \pmb H$, used in (4.24) and (4.25), plays a key role in this endeavor. 
+
+- Note that the matrix $\pmb P$ is not of full rank. 
+
+- More specifically, assuming that $n > p$, the rank of $\pmb P$ is equal to or less than $n − p$. 
+
+- Consequently, we may have at most $n − p$ transformed, uncorrelated residuals. 
+
+- In contrast to the raw and scaled residuals, residuals obtained by using error recovery methods may represent more than one observation, which makes their interpretation difficult.
+
+- These types of residuals have been developed for the classical `LM`, described in Sect. 4.2, but do not generalize easily to more complex `LM`s. 
+
+
+### 4.5.2 Residual Diagnostics
+
+
+
+- Residual plot: a nonrandom pattern in the plot is interpreted as an indication of a misspecification of the functional form of the covariate.
+
+
+- QQ plot: the quantiles of ordered residuals are plotted against the corresponding values for the standard normal distribution. 
+
+  - If the residuals are (at least approximately) normally distributed, the shape of the plot should not deviate from a straight line. 
+
+  - On the other hand, if the distribution of the residuals is, e.g., symmetric, but with “thicker” tails than the normal, the plot will look like a stretched S. 
+  
+  - A skewed distribution will result in a plot in the form of an arch.
+
+  - they tend to remove not-desired heteroscedasticity carried by raw residuals.
+
+  - If the plot of raw residuals reveals a nonlinear relationship between the dependent variable and a covariate, a suitable transformation of the dependent variable or the covariate may be considered to obtain a linear relationship.
+
+- A special class of transformations of the dependent variable are variance-stabilizing transformations. 
+
+  - They can be used when the assumption of homogeneous variance of the observations seem to be violated.
+
+  - suppose that the variance can be expressed, at least approximately, as a function of the expected value
+
+
+- it may be difficult to find a variance-stabilizing transformation that
+would alleviate the problem of the non-homogeneous-variance assumption. 
+
+- In this case, the use of an LM allowing for heterogeneous variance can be considered. 
+
+- It should be kept in mind that if a transformation is applied to the dependent variable, the distribution of the transformed variable may change.
+
+- Thus, after applying the transformation, the normal Q-Q plot of the scaled residuals should be checked for symptoms of the possible violation of the assumption of normality of the residual errors.
+
+- The measure is the scaled change, induced by the exclusion of a particular observation, in the estimated parameter vector.
+
+$$
+D_i \equiv \frac {(\hat \beta - \hat \beta_{(-i)})[\widehat {Var}(\hat \beta)]^{-1}(\hat \beta- \hat \beta_{(-i)})} {rank(\pmb X)} = \frac {\hat \epsilon^2_i h_{i, i}} {\hat \sigma^2 (1 - h_{i, i})^2}
+$$
+
+- The larger the value of $D_i$, the larger the influence of the $i$-th observation on the estimate of $\beta$
+
+- Note that Cook's distance is used to assess the influence of a given observation on $\hat \beta$ and does not take into account changes of $\hat \sigma$.
+
+- A basic tool to investigate the influence of a given observation on estimates of both $\beta$ and $\sigma^2$ is the likelihood displacement. 
+
+$$
+Ld_i \equiv 2 \times \bigg[l_{full}(\hat \Theta;\ y) - l_{full}(\hat \Theta_{(-i)};\ y)\bigg]
+$$
+
+$\hat \Theta \equiv (\hat {\beta'},\ \hat \sigma^2)$
+
+### 4.6.1 Inference
+
+#### 4.6.1.2 Linear Case
+
+$$
+H_0: \pmb {L\beta} = \pmb c_0
+$$
+
+It follows that, when $\sigma^2$ is known, the statistics for the LR, Wald, and score test
+are exactly the same and are equal to:
+
+$$
+T \equiv \frac {(\pmb {L\hat \beta} − \pmb c_0)' [\pmb L( \pmb X'\pmb X)^{−1}\pmb L']^{−1} (\pmb {L\hat \beta} − \pmb c_0)} {\sigma^2}\ \ \ \ (4.31)
+$$
+
+$$
+\begin{split}
+& T_L \equiv n \log \bigg[ 1 + \frac {rank(\pmb L)} {n-p} F \bigg]\ \ \ \ (4.32)\\
+& T_W \equiv F \frac {n} {n-p} rank(\pmb L) \ \ \ \ (4.33)\\
+& T_S \equiv \frac {nF} {\frac {n- p} {rank(\pmb L)} + F} \ \ \ \ (4.34)\\
+& F \equiv \frac {(\pmb {L\hat \beta} − \pmb c_0)' [\pmb L( \pmb X'\pmb X)^{−1}\pmb L']^{−1} (\pmb {L\hat \beta} − \pmb c_0)} {\hat \sigma^2_{REML} rank(\pmb L)} \ \ \ \ (4.35)\\
+& F \equiv \frac {(\pmb {L\hat \beta} − \pmb c_0)' [\pmb L \widehat {Var}(\pmb {\hat \beta}) \pmb L']^{−1} (\pmb {L\hat \beta} − \pmb c_0)} {rank(\pmb L)} \ \ \ \ (4.36) \\
+& * t \equiv \frac {\hat \beta - c_0} {\sqrt {\widehat {Var}(\hat \beta)}}\ \ \ \ (4.37)
+\end{split}
+$$
+
+- In some circumstances, a confidence interval for $\sigma$ might be of interest. It can be
+constructed based on a $\chi^2$-distribution. 
+
+$$
+\Bigg[\hat \sigma_{REML} \sqrt{\frac {n - p} {\chi^2_{(1-\alpha/2),\ (n-p)}}},\ 
+\hat \sigma_{REML} \sqrt{\frac {n - p} {\chi^2_{(\alpha/2),\ (n-p)}}} \Bigg]
+ \ \ \ \ (4.39)
+$$
+
+## 4.7 Model Reduction and Selection
+
+```{r}
+knitr::include_graphics("figure/lmmur_t_4.3.png")
+```
+
+We refer to these models as the null model and the alternative model, respectively. 
+
+The models are nested, in the sense that the model under the null hypothesis (the null model) could be viewed as a special case of the model under the alternative hypothesis (the alternative model).
+
+- Sequential approach: In the literature, the resulting tests are often referred to as Type I tests.
+
+- Marginal” approach: In the literature, the resulting tests are often referred to as Type III tests.
+
+Note that, in contrast to the marginal tests, the results of the tests in the sequential approach depend on the order of terms in the model. 
+In statistical software, in the case of tests about the mean structure parameters, the order is most often determined by the order of the terms that appear in the syntax defining the mean structure of the model. 
+
+The results of the tests in the marginal one are not affected by the order of terms in the full model specification. 
+An important disadvantage of the marginal approach is that it includes tests that are not valid in some cases, e.g., when testing the main effect of a factor in the presence of interaction terms involving this factor.
+
+
+## Information criteria
+
+$$
+l_A − f(p_A) > l_0 - f(p_0)\ \ or\ \ l_A - l_0 > f (p_A) − f (p_0)
+$$
+
+
+$f (p) = p$ or $f (p) = 0.5 p\log N^*$,
+where $N^*$ is the effective sample size, defined as $N^* \equiv N$ for `ML` and $N^* \equiv N − p$ for `REML`. 
+
+- Though the two criteria are developed based on the same underlying principle, they are based on different model-selection approaches. 
+
+- AIC aims to find the best approximating model to the true one. 
+
+- BIC aims to identify the true model. 
+
+- For $\log N^* > 2$, the penalty for the number of parameters used in BIC is larger than for AIC. 
+
+- Thus, the former criterion tends to select simpler models than the latter.
+
+- In view of the effective sample size, according to these criteria, differences in the likelihood need to be considered not only relative to the differences in numbers of parameters, but also relative to the number of observations included in the analysis.
+
+- log-restricted-likelihoods are only fully comparable for LMs with the same mean structure. 
+
+- Hence, for comparing model fits with different mean structures, one should consider information criteria
+based on the ML estimation.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,107 @@
+---
+title: "BIOS6643. L18 Models for data with many zeros"
+cheauthor: "EJC"
+-- date: "" 
+header-includes:
+   - \usepackage{amsmath}
+   - \usepackage{float}
+output: pdf_document
+---
+
+\newcommand{\bi}{\begin{itemize}}
+\newcommand{\ei}{\end{itemize}}
+\newcommand{\itt}{\item}
+
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- -->
+
+
+```{r installp, echo = T, eval=T, include=F}
+
+library(glmmTMB)
+
+
+```
+
+## Salamander data
+A data set containing counts of salamanders with site covariates and sampling covariates. Each of 23 sites was sampled 4 times. See Price et al. (2016, Effects of mountaintop removal mining and valley filling on the occupancy and abundance of stream salamanders. Journal of Applied Ecology)
+
+\medskip
+A data frame with 644 observations on the following 10 variables:
+
+- *site*: name of a location where repeated samples were taken
+- *mined*: factor indicating whether the site was affected by mountain top removal coal mining 
+- *cover*: amount of cover objects in the stream (scaled)
+- *sample*: repeated sample
+- *DOP*: Days since precipitation (scaled)
+- *Wtemp*: water temperature (scaled)
+- *DOY*: day of year (scaled)
+- *spp*: abbreviated species name, possibly also life stage
+- *count*: number of salamanders observed
+
+\medskip 
+
+**Question of interest:**
+  What is the association between mining and the number of salamanders found at sites (in terms of occuppancy and conditional abundance)?
+
+\medskip 
+
+```{r "data", eval=T, echo = T, include=T, out.width="90%"}
+head(Salamanders, 3)
+table(Salamanders$count)
+
+```
+
+\medskip 
+
+## Poisson zero heavy model
+We can use **glmmTMB** to fit ZI- or hurdle models for longitudinal data. Note that the zero part is not modeled longitudinally. 
+
+```{r "ZIpoi", eval=T, echo = T, include=T, out.width="90%"}
+fit.zip <- glmmTMB(count ~ mined + (1|site),
+      zi=~mined,
+      family=poisson, 
+      data=Salamanders)
+
+summary(fit.zip)
+
+
+```
+The expected mean count of salamanders is exp(1.14)=3.13 times in the sites with no mining than those sites with mining, for sites with non-zero salamanders. The odds of probability of zero structural counts for sites with no mining is exp(-1.74)=0.18 times the odds of probability of zero structural counts for sites with mining. 
+
+\medskip 
+
+## Comparison of ZIP versus Poisson 
+```{r "ZI.comparison", eval=T, echo = T, include=T, out.width="90%"}
+
+fit.p <- glmmTMB(count ~ mined + (1|site),
+      zi=~0,
+      family=poisson, data=Salamanders)
+
+summary(fit.p)
+
+## likelihood ratio test for whether or not the zero-inflation is needed
+anova(fit.zip, fit.p)
+
+
+```
+
+\medskip 
+
+## Hurdle Poisson model
+```{r "hurdle", eval=T, echo = T, include=T, out.width="90%"}
+fit.hurdle <- glmmTMB(count ~  mined + (1|site),
+      zi=~ mined,
+      family=truncated_poisson, 
+      data=Salamanders)
+
+## summary(fit.hurdle)
+
+```
+
+
+

@@ -1,0 +1,1042 @@
+---
+title: 'Chapter 16 ARMD Trial: Modeling Visual Acuity'
+author: "Randy"
+date: "9/25/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library("tidyverse")
+library("here")
+library("janitor")
+library("knitr")
+library("tinytex")
+library("bookdown")
+library("nlme")
+library("lme4")
+
+```
+
+## 16.1 Introduction
+
+The analysis took into account the correlation between visual acuity measurements obtained for the same patient. 
+
+To apply the models, we used the function `nlme::gls()` to fit the population-averaged (marginal) models.
+
+
+## 16.2 A Model with Random Intercepts and Homogeneous Residual Variance
+
+It contains subject-specific random intercepts and homoscedastic residual errors. Consequently, observations for the same individual, which share the random intercept, are correlated with a constant (positive) correlation coefficient. 
+
+Marginally, this corresponds to a compound-symmetry correlation structure with a correlation parameter greater than zero. 
+
+### 16.2.1 Model Specification
+
+Note that we use a linear time effect, following the findings based on the final marginal model M12.3. However, contrary to these findings, we include the interaction between time and treatment in (16.1), to “enrich” the fixed part of the mean structure. Also, as it will become clear shortly, we simplify the variance-covariance structure.
+
+$$
+\begin{split}
+VISUAL_{it} = & \beta_0 +\beta_1 × VISUAL0_{i} +\beta_2 × TIME_{it} +\beta_3 × TREAT_{i} +\\
+& \beta_4 × TREAT_i × TIME_{it} + \\
+& b_{0i} + \epsilon_{it}. (16.1)
+\end{split}
+$$
+
+Note that, formally speaking, the random intercept $b_{0i}$ is a subject-specific deviation from the fixed intercept $b_0$.
+
+It is, however, customary to call $b_{0i}$ a subject-specific random intercept, despite the fact that, actually, $b_0$ and $b_{0i}$ are “coupled” (Sect. 13.2.1) and they both contribute to the subject-specific intercept. 
+
+Typically, this convention does not lead to any misunderstanding.
+
+
+The fixed part of model M16.1 assumes that the average profile is linear in time,
+with different intercepts and slopes for the placebo and active treatment groups. 
+
+The subject-specific profiles are assumed to also be linear in time, with subject-specific
+(random) intercepts that shift the individual profiles from the average linear trend.
+
+
+$$
+\begin{pmatrix}
+VISUAL_{i1}\\
+VISUAL_{i2}\\
+VISUAL_{i3}\\
+VISUAL_{i4}
+\end{pmatrix} =
+\begin{pmatrix}
+1 & VISUAL0_i & 4 & TREAT_i & 4 · TREAT_i\\
+1 & VISUAL0_i & 12 & TREAT_i & 12 · TREAT_i\\
+1 & VISUAL0_i & 24 & TREAT_i & 24 · TREAT_i\\
+1 & VISUAL0_i & 52 &  TREAT_i & 52 · TREAT_i\\
+\end{pmatrix} 
+\begin{pmatrix}
+\beta_0\\
+\beta_1\\
+\beta_2\\
+\beta_3\\
+\beta_4\\
+\end{pmatrix} +
+\begin{pmatrix}
+1\\ 1\\  1\\ 1
+\end{pmatrix}
+× b_{0i} +
+\begin{pmatrix}
+\epsilon_{i1}\\
+\epsilon_{i2}\\
+\epsilon_{i3}\\
+\epsilon_{i4}\\
+\end{pmatrix}, (16.2)
+$$
+
+
+$$
+\begin{split}
+& \pmb y_i \equiv 
+\begin{pmatrix}
+VISUAL_{i1}\\
+VISUAL_{i2}\\
+VISUAL_{i3}\\
+VISUAL_{i4}
+\end{pmatrix}\\
+& \pmb X_i \equiv
+\begin{pmatrix}
+1 & VISUAL0_i & 4 & TREAT_i & 4 · TREAT_i\\
+1 & VISUAL0_i & 12 & TREAT_i & 12 · TREAT_i\\
+1 & VISUAL0_i & 24 & TREAT_i & 24 · TREAT_i\\
+1 & VISUAL0_i & 52 &  TREAT_i & 52 · TREAT_i\\
+\end{pmatrix} \\
+& \pmb Z_i \equiv
+\begin{pmatrix}
+1\\ 1\\  1\\ 1
+\end{pmatrix}\\
+& \pmb \beta \equiv 
+\begin{pmatrix}
+\beta_0\\
+\beta_1\\
+\beta_2\\
+\beta_3\\
+\beta_4\\
+\end{pmatrix} \\
+& \pmb \epsilon_i \equiv
+\begin{pmatrix}
+\epsilon_{i1}\\
+\epsilon_{i2}\\
+\epsilon_{i3}\\
+\epsilon_{i4}\\
+\end{pmatrix}\\
+& \pmb b_i \equiv b_{0i}
+\end{split}
+$$
+
+$$
+\begin{split}
+\pmb {\mathcal D} \equiv & d_{11}\\
+\pmb {\mathcal R}_{i}  \equiv & \sigma^2 \pmb I_{4}\\
+\pmb {\mathcal V}_i  \equiv & \pmb Z_i \pmb {\mathcal D} \pmb Z_i' + \sigma^2 \pmb I_4 \\
+= & \begin{pmatrix}
+1 \\ 1 \\ 1 \\ 1
+\end{pmatrix}
+d_{11} 
+(1 \ \  1 \ \  1 \ \ 1 )+
+\begin{pmatrix}
+\sigma^2 & 0 & 0 & 0 \\
+0 & \sigma^2 & 0 & 0 \\
+0 & 0 & \sigma^2 & 0 \\
+0 & 0 & 0 & \sigma^2 \\
+\end{pmatrix} \\ = &  
+\begin{pmatrix}
+\sigma^2 +d_{11} & d_{11} & d_{11} & d_{11} \\
+d_{11} & \sigma^2 +d_{11} & d_{11} & d_{11} \\
+d_{11} & d_{11} & \sigma^2 +d_{11} & d_{11} \\
+d_{11} & d_{11} & d_{11} & \sigma^2 +d_{11}
+\end{pmatrix}\\
+\rho = & d_{11} / (\sigma^2 + d_{11})
+\end{split}
+$$
+
+```{r "R16.1 ARMD Trial: Model M16.1 fitted using the function lme()"}
+library(nlmeU)
+data(armd, package = "nlmeU")
+## M16.1
+lm2.form <- visual ~ visual0 + time + treat.f + treat.f:time
+(fm16.1 <- lme(visual ~ visual0 + time + treat.f + treat.f:time, 
+               random = ~1|subject,
+               data = armd)) # b0i:(16.5)
+vcov(fm16.1)
+getVarCov(fm16.1)
+summary(fm16.1)
+printCoefmat(summary(fm16.1)$tTable, 
+             has.Pvalue = TRUE, 
+             P.values = TRUE) 
+
+# ?printCoefmat
+# printCoefmat(x, 
+#              digits = max(3, getOption("digits") - 2),
+#              signif.stars = getOption("show.signif.stars"),
+#              signif.legend = signif.stars,
+#              dig.tst = max(1, min(5, digits - 1)),
+#              cs.ind = 1L:k,
+#              tst.ind = k + 1L,
+#              zap.ind = integer(),
+#              P.values = NULL,
+#              has.Pvalue = TRUE,
+#              eps.Pvalue = .Machine$double.eps,
+#              na.print = "NA", 
+#              quote = FALSE, 
+#              right = TRUE, 
+#              ...)
+
+```
+
+![](figure\lmmur_t_16_1.png)
+
+By default, `lme()` assumes independent residual errors with a constant variance, $\sigma^2$. Also, because there is no method argument in the `lme()` function call, the default **REML** estimation is used. 
+
+Note that, the p-values, corresponding to the t-test statistics for the fixed-effects coefficients, are for the marginal-approach tests.
+
+
+```{r "R16.2 ARMD Trial: Data grouping/hierarchy implied by model M16.1"}
+getGroupsFormula(fm16.1) # Grouping formula
+str(grpF <- getGroups(fm16.1)) # Grouping factor
+# getGroups(fm16.1)
+levels(grpF)
+range(xtabs(~grpF))
+```
+
+
+By using the function `getGroupsFormula()` (see Panel R14.5), we obtain the conditioning expression used in the specification of the random argument. 
+
+It indicates a single level of grouping, defined by the levels of the factor subject. By applying the function `getGroups()` to the model-fit object, we extract the grouping factor and store it in the object **grpF**. 
+
+
+```{r "R16.3 ARMD Trial: The estimated variance-covariance matrices for random effects (D) and residual errors (Ri) for model M16.1"}
+## (a) The D-matrix estimate
+## d_11 
+getVarCov(fm16.1, individual = "2")
+getVarCov(fm16.1, individual = "6")
+## d_11 \sigma
+VarCorr(fm16.1)
+
+## (b) The Ri-matrix estimate
+getVarCov(fm16.1,
+          type = "conditional", # Ri:(16.6)
+          individual = "6")
+
+getVarCov(fm16.1,
+          type = "conditional", # Ri:(16.6)
+          individual = "2")
+
+(fm16.1cov <- getVarCov(fm16.1,
+                       type = "marginal", # Vi:(16.7)
+                       individual = "2"))
+
+(cov2cor(fm16.1cov[[1]])) # Corr(Vi)
+```
+
+The `getVarCov()`-function call, used in Panel R16.3a, does not include the type argument (see Sect. 14.6 and Table 14.5). 
+
+This means that the default value of the argument, i.e., `type="random.effect"`, is employed. 
+
+In the case of model M16.1, it gives the estimated variance and standard deviation of the subject-specific random intercepts. The argument `individual="2"`, used in the `getVarCov()`-function call, requests the random effects variance-covariance matrix for the second individual, i.e., `subject==2`, in the analyzed dataset. 
+
+In fact, in our case, the subject number is not of importance, as the variance-covariance structure of random effects is assumed to be the same for all individuals.
+
+
+Finally, we obtain the estimated marginal variance-covariance
+matrix, defined in (16.7), by applying the function `getVarCov()` with the
+`type="marginal"` argument. The result, for `individual="2"`, is stored in the
+object **fm16.1cov** and displayed. 
+
+As noted earlier, the estimated marginal correlation matrix implies a constant, positive correlation coefficient equal to 0.52 for any two visual acuity measurements obtained for the same patient at different timepoints.
+
+
+## 16.3 A Model with Random Intercepts and the `varPower(·)` Residual Variance-Function
+
+### 16.3.1 Model Specification
+
+To specify the new model, labeled M16.2, we use the same fixed-effects part as in model M16.1. However, we modify the variance-covariance structure of residual random errors, specified in (16.6). 
+
+$$
+\pmb {\mathcal R}_i = \sigma^2
+\begin{pmatrix}
+(TIME_{i1})^{2\delta} &  0 & 0 & 0 \\
+0 & (TIME_{i2})^{2\delta} &  0 & 0 \\
+0 & 0 & (TIME_{i3})^{2\delta} &  0 \\
+0 & 0 & 0 & (TIME_{i4})^{2\delta} 
+\end{pmatrix}. (16.8)
+$$
+
+Note that $\pmb {\mathcal R}_i = \sigma^2 \pmb \Lambda_i \pmb C_i \pmb \Lambda_i$ using $\pmb \Lambda_i$, given in (12.3), and by setting $\pmb C_i = \pmb I_4$.
+
+It should be stressed here that the parameter $\sigma^2$, used in (16.8), can only be interpreted as a (unknown) scale parameter.  This is in contrast to (16.6), where it could be interpreted as the variance of residual errors.
+
+The matrix $\pmb {\mathcal R}_i$, given in (16.8), is diagonal with unequal elements defined by the `varPower(·)` function. 
+
+$$
+\pmb {\mathcal V}_i =
+\begin{pmatrix}
+\sigma^2_1 + d_{11} & d_{11} & d_{11} & d_{11} \\
+d_{11} & \sigma^2_2 + d_{11} & d_{11} & d_{11}\\
+d_{11} & d_{11} & \sigma^2_3 + d_{11} & d_{11}\\
+d_{11} & d_{11} & d_{11} & \sigma^2_4 + d_{11}
+\end{pmatrix}, (16.9) \ \ \ with\ 
+\sigma^2_t = \sigma^2(TIME_{it})^{2\delta}
+$$
+
+It is worth observing that, because the variance changes with time, the marginal
+correlation coefficients between observations made at different times are no longer
+equal.
+
+
+```{r "R16.5 ARMD Trial: Model M16.2 fitted using the function lme()"}
+(fm16.2 <- # M16.2 from M16.1
+   update(fm16.1,
+          weights = varPower(form = ~ time), # (9.4)
+          data = armd))
+```
+
+The results, indicate that the scale parameter $\sigma$ is estimated to be equal to 3.607. 
+
+The power coefficient $\delta$ of the `varPower()` variance function, as specified in (9.4), is estimated to be equal to 0.314. 
+
+The estimate of the standard deviation of the random intercepts $\sigma_b$ equals 7.706.
+
+```{r "R16.6 ARMD Trial: The estimated D, Ri, and Vi matrices for model M16.2" }
+# d_11: (16.6), \sigma^2
+VarCorr(fm16.2)
+
+# R_i: (16.8)
+getVarCov(fm16.2, 
+          type = "conditional",
+          individual = "6")
+# Vi: (16.9)
+(fm16.2cov <- 
+    getVarCov(fm16.2,
+              type = "marginal",
+              individual = "2"))
+
+cov2cor(fm16.2cov[[1]])
+```
+
+`VarCorr()` function. The estimated variance of random intercepts is equal to 59.376. 
+
+Note that it is smaller than the value of 80.608, obtained for model M16.1 (see Panel R16.3). 
+
+This is expected, because, by allowing for heteroscedastic residual random errors, a larger part of the total variability is explained by the residual variances
+
+![](figure/lmmur_t_16_2.png)
+
+
+It corresponds to the matrix specified in (16.8). Thus, for instance, the first diagonal element of the $\pmb {\mathcal R}_i$ matrix is equal to $\sigma^2 \times 4^{2 \hat \delta} = 3.6067^2 ·4^{2·0.3144} = 31.103$.
+
+###  16.3.3 Diagnostic Plots
+
+
+```{r "R16.7 ARMD Trial: Residual plots for model M16.2.", fig.height=7, fig.width=7}
+## (a) Default residual plot of conditional Pearson residuals
+plot(fm16.2)
+
+## (b) Plots (and boxplots) of Pearson residuals per time and treatment
+plot(fm16.2, # Figure not shown
+     resid(., type = "pearson") ~ time | treat.f,
+     id = 0.05)
+lattice::bwplot(resid(fm16.2, type = "p") ~ time.f | treat.f, # Fig. 16.2
+                data = armd)
+
+## (c) Normal Q-Q plots of Pearson residuals and predicted random effects
+## random error terms by timepoints
+qqnorm(fm16.2, ~resid(.) | time.f)
+## random effects
+## The effects are estimated by EBLUPs (Sect. 13.6.1)
+qqnorm(fm16.2, ~ranef(.))
+
+
+id <- 0.05
+outliers.idx <-
+  within(armd, {
+    resid.p <- resid(fm16.2, type = "pearson") # Pearson resids.
+    idx <- abs(resid.p) > -qnorm(id / 2) # Indicator vector
+  })
+outliers <- subset(outliers.idx, idx) # Data with outliers
+nrow(outliers) # Number of outliers
+outliers$subject
+```
+
+The plot displays the conditional Pearson residuals (Sect. 13.6.2) versus fitted values. As such, the plot is not very informative, because it pools all the residuals together, despite the fact that residuals obtained from the same individual are potentially correlated. However, it can serve for detecting, e.g., outliers. 
+
+A modified plot of the residuals for each timepoint and treatment group might be more helpful. 
+
+Toward this end, we use the form of the plot()-function call shown in Panel R16.7b. 
+
+Note that, in the plot formula, we apply the `type="pearson"` argument in the `resid()` function, which indicates the use of the Pearson residuals.
+
+
+Moreover, in the formula, we use the `term ~time|treat` to obtain plots per treatment group over time in separate panels. 
+
+Additionally, by applying the argument `id=0.05` to the `plot()` statement, we label the residuals larger, in absolute value, than the 97.5th percentile of the standard normal distribution by the number of the corresponding observation from the **armd** data frame.
+
+
+**The resulting Q-Q plot is shown in Fig. 16.4 and is slightly curvilinear. This could be taken as an indication of non-normality of the random effects. ** such a plot may not necessarily reflect the true distribution of the random effects. Hence, it should be interpreted with caution.
+
+```{r "R16.9 ARMD Trial: Predicted visual acuity values for model M16.2", fig.height=5, fig.width=5}
+aug.Pred <- # augPred for M16.2
+augPred(fm16.2,
+        primary = ~time, # Primary covariate
+        level = 0:1, # Marginal(0) and subj.-spec.(1)
+        length.out = 2)
+plot(aug.Pred, layout = c(4, 4, 1), # Fig. 16.5
+     key = list(lines = list(lty = c(1,2)),
+                text = list(c("Marginal", "Subject-specific")),
+                columns = 2))
+## augmented prediction
+# ?augPred
+# augPred(object, 
+#         primary = NULL,
+#         minimum = min(primary), 
+#         maximum = max(primary),
+#         length.out = 51, 
+#         level = Q, 
+#         ...)
+```
+
+
+such a plot may not necessarily reflect the true distribution of the random effects. Hence, it should be interpreted with caution.
+
+The function `augPred()` allows obtaining predicted values for the object specified as the first argument. The object can be of class `lmList (14.5)`, `gls (11.6)`, and `lme (14.6)`.
+
+The optional arguments of the function augPred() include: primary, level, length.out, minimum, and maximum. The argument primary is a one-sided formula indicating the covariate at which values the predicted values should be computed. 
+
+
+The argument level of the function `augPred()` is an integer vector specifying the grouping levels for which the predicted values are to be computed. 
+
+Its interpretation is the same as for the function `predict()` (Sect. 14.6). In the augPred-function call shown in Panel R16.9, we use level=0:1, which amounts to specifying that the predicted values should be computed at the level 0, i.e., the population level, and at the level 1, i.e., the subject level.
+
+
+## 16.4 Models with Random Intercepts and Slopes and the `varPower(·)` Residual Variance-Function
+
+### 16.4.1 Model with a General Matrix D
+
+
+$$
+\begin{split}
+VISUAL_{it} = & \beta_0 + \beta_1 \times VISUAL0_{i} + \beta_2 \times TIME_{it} + \beta_3 × TREAT_i \\
+& + \beta_4 \times TREAT_i \times TIME_{it} \\
+& + b_{0i} + b_{2i} × TIME_{it} + \epsilon_{it}. (16.10)\\
+\end{split}
+$$
+
+$$
+Zi = \begin{pmatrix}
+1 & 4\\
+1 & 12\\
+1 & 24\\
+1 & 52
+\end{pmatrix}, \ \ 
+bi = \begin{pmatrix}
+b_{0i}\\
+b_{2i}
+\end{pmatrix}, (6.11)
+$$
+
+$$
+\pmb b_i \sim (\pmb 0,\ \pmb {\mathcal D})\ and\ \pmb \epsilon_i \sim (\pmb 0,\ \pmb {\mathcal R}_i)\\
+\pmb {\mathcal D} \equiv \begin{pmatrix}
+d_{11} & d_{12}\\
+d_{21} & d_{22}
+\end{pmatrix}
+$$
+
+Note that the assumed form of $\pmb {\mathcal D}$ implies that the random intercepts and slopes are correlated. 
+
+For instance, a positive correlation between $b_{0i}$ and $b_{2i}$ means that, for individuals with a higher initial value of visual acuity, the post-randomization measurements will increase more rapidly or decrease more slowly than for patients with a lower initial value.
+
+
+$$
+\begin{split}
+Cov(y_{it_1}, y_{it_2}) = &
+\begin{pmatrix}
+1 & TIME_{it_1}
+\end{pmatrix} \pmb {\mathcal D} 
+\begin{pmatrix} 
+1 \\ TIME_{it_2}
+\end{pmatrix} + \pmb I(t_1 = t_2)\sigma^2 (TIME_{it_1})^{2\delta} \\
+= \ & d_{11} + d_{12}(TIME_{it_1} + TIME_{it_2}) + d_{22} TIME_{it_1} TIME_{it_2} \\
++ \ &\pmb I(t_1 = t_2 )\sigma^2 (TIME_{it})^{2\delta}, (16.14)\\
+Var(y_{it}) = & d_{11} + 2d_{12} TIME_{it} + d_{22}TIME^2_{it} + \sigma^2(TIME_{it})^{2\delta}. (16.15)
+\end{split}
+$$
+
+By applying this particular formula in the random argument, we imply that, for each level of the subject grouping variable, a random intercept and a random slope for time are to be considered, with a (default) general variance-covariance matrix $\pmb {\mathcal D}$ represented by an object of class `pdLogChol`.
+
+The results show a low estimated value of the correlation coefficient for the random effects $b_{0i}$ and $b_{2i}$, equal to 0.138. The confidence interval for the correlation coefficient suggests that, in fact, the two random effects can be uncorrelated.
+
+
+```{r}
+fm16.3 <- # M16.3 ← M16.2
+ update(fm16.2,
+        random = ~1 + time | subject,
+        data = armd)
+getVarCov(fm16.3, individual = "2") # D: (16.16)
+
+intervals(fm16.3, which = "var-cov")
+```
+
+### 16.4.2 Model with a Diagonal Matrix D
+
+$$
+\pmb {\mathcal D} = 
+\begin{pmatrix}
+d_{11} & 0 \\
+0 & d_{22}
+\end{pmatrix}, (16.16)
+$$
+
+To fit model M16.4, we use the constructor-function `pdDiag()`. The function creates an object of class `pdDiag`, representing a diagonal positive-definite matrix
+
+
+```{r "R16.11 ARMD Trial: Confidence intervals for the parameters of model M16.4"}
+(fm16.4 <- # M16.4 from M16.3
+  update(fm16.3,
+         random = list(subject = pdDiag(~1 + time)), # Diagonal D
+         data = armd))
+intervals(fm16.4)
+
+intervals(fm16.3, which = "var-cov")
+intervals(fm16.4, which = "var-cov")
+
+## LRT for nested models
+anova(fm16.4, fm16.3)
+```
+
+Panel R16.11 presents the 95% CIs for all the parameters of model M16.4. They suggest that the mean structure could be simplified by removing the **time:treat.f** interaction. 
+
+In Panel R16.12, we use the REML-based LR test (Sect. 13.7.2) to verify the null hypothesis that in the matrix D, defined in (16.13), the element $d_{12} = 0$. 
+
+
+$$
+Var(y_{it}) = d_{11} + d_{22} TIME^2_{it} + \sigma^2(TIME_{it})^{2\delta}.
+$$
+
+Consequently, given that $\hat \delta = 0.11$, the implied marginal variance function is predominantly a quadratic function over time. As $d_{11}$, $d_{22}$, and $\sigma^2$ are necessarily positive, the function increases with time, which is in agreement with the observation made in the exploratory analysis.
+
+
+```{r fig.height=5, fig.width=5}
+plot(fm16.4)
+
+## (b) Plots (and boxplots) of Pearson residuals per time and treatment
+plot(fm16.4, # Figure not shown
+     resid(., type = "pearson") ~ time | treat.f,
+     id = 0.05)
+lattice::bwplot(resid(fm16.4, type = "p") ~ time.f | treat.f, 
+                data = armd)
+
+## (c) Normal Q-Q plots of Pearson residuals and predicted random effects
+## random error terms by timepoints
+qqnorm(fm16.4, ~resid(.) | time.f)
+## random effects
+## The effects are estimated by EBLUPs (Sect. 13.6.1)
+qqnorm(fm16.4, ~ranef(.))
+
+
+aug.Pred <- # augPred for M16.2
+  augPred(fm16.4,
+    primary = ~time, # Primary covariate
+    level = 0:1, # Marginal(0) and subj.-spec.(1)
+    length.out = 2)
+plot(aug.Pred,
+  layout = c(4, 4, 1), # Fig. 16.5
+  key = list(
+    lines = list(lty = c(1, 2)),
+    text = list(c("Marginal", "Subject-specific")),
+    columns = 2))
+```
+
+## 16.4.3 Model with a Diagonal Matrix D and a Constant Treatment Effect
+
+$$
+VISUAL_{it} = \beta_0 + \beta_1 \times VISUAL0_i + \beta_2 \times TIME_{it} + \beta_3 \times TREAT_i \\
++ b_{0i} + b_{2i} \times TIME_{it} + \epsilon_{it}. (16.17)
+$$
+
+```{r "R16.13 ARMD Trial: Fixed-effects estimates, their approximate standard errors, and 95% confidence intervals for the variance-covariance parameters of model M16.5"}
+lm3.form <- formula(visual ~ visual0 + time + treat.f) # (12.9)
+fm16.5 <- # M16.5 ← M16.4
+  update(fm16.4,
+         lm3.form, 
+         data = armd)
+summary(fm16.5)$tTable
+
+intervals(fm16.5, which = "var-cov")
+
+VarCorr(fm16.5) # D (16.16)
+
+getVarCov(fm16.5, # Ri: (16.8)
+          type = "conditional", 
+          individual = "2")
+
+(fm16.5cov <- # Vi: (16.9)
+  getVarCov(fm16.5,
+    type = "marginal",
+    individual = "2"))
+
+cov2cor(fm16.5cov[[1]])
+```
+
+Note that these are the marginal-approach tests (Sect. 5.6). Thus, the effect of each covariate is tested under the assumption that all other covariates are included in the model as well. 
+
+It suggests a time-independent, negative average effect of the active treatment. This finding is in agreement with the results of the exploratory analysis (Sect. 3.2) and of the previous analysis using an LM with fixed effects for correlated data .
+
+
+The estimated marginal variance-covariance matrix indicates an increasing trend of variances of visual acuity measurements over time, while the corresponding correlation matrix suggests a decreasing correlation between the measurements obtained at more distant timepoints. 
+
+These findings are in agreement with the results of the exploratory analysis (Sect. 3.2) and with the results obtained for model M12.3 for correlated data (Table 12.2). 
+
+Note, however, that a direct comparison of the estimated marginal matrices to their counterparts obtained for model M12.3 is not appropriate, because the matrices for model M16.5 are much more structured than those of model M12.3 
+
+## 16.5 An Alternative Residual Variance Function: varIdent(·)
+
+$$
+\pmb {\mathcal R}_i = 
+\sigma^2_1
+\begin{pmatrix}
+1 & 0 & 0 & 0 \\
+0 & \sigma^2_2 / \sigma_1^2 & 0 & 0 \\
+0 & 0 & \sigma^2_3 / \sigma_1^2 & 0 \\
+0 & 0 & 0 & \sigma^2_4 / \sigma_1^2 
+\end{pmatrix}
+=
+\sigma^2
+\begin{pmatrix}
+\delta_1^2 & 0 & 0 & 0 \\
+0 & \delta_2^2 & 0 & 0 \\
+0 & 0 & \delta_3^2 & 0 \\
+0 & 0 & 0 & \delta_1^2 
+\end{pmatrix}
+$$
+
+where $\delta_t \equiv \sigma_t/\sigma_1 (t = 1,...,4)$ is the ratio of SD of the visual acuity measurements at occasion $t$ relative to SD of the measurements at the first occasion, and where $\sigma^2 \equiv \sigma^2_1$. 
+
+![](figure/lmmur_t_16_1.png)
+![](figure/lmmur_t_16_2.png)
+
+![](figure/lmmur_t_16_3.png)
+
+
+```{r}
+## (a) Fitting of model M16.6
+(fm16.6 <- # M16.6  M16.3
+    update(fm16.3, 
+           weights = varIdent(form = ~1 | time.f)))
+
+## (b) REML-based LR test for the variance function
+anova(fm16.3, fm16.6) ## varpower is nested in varident
+
+intervals(fm16.6, which = "var-cov")
+## the variance for the 52wks is extremely large
+## this is a signal for malfunction
+
+qqnorm(fm16.6, ~resid(.)|time.f)
+qqnorm(fm16.6, ~ranef(.))
+## ,the problem with convergence of the estimation algorithm 
+## for model M16.6 is also clearly reflected 
+## in the normal Q-Q plot of the conditional Pearson residuals 
+```
+
+
+based on the likelihoods of models M16.6 and M16.3. Note that the
+latter (null) model is nested in the former. The outcome of the test is statistically
+significant at the 5% significance level and suggests that the use of the more general
+varIdent(·) variance function to define matrix Ri, as in (16.18), gives a better fit
+than the use of the varPower(·) function.
+
+A signal of the problems with the estimation of model M16.6 can be also
+obtained by, e.g., attempting to compute confidence intervals for the variance-covariance parameters. 
+
+
+To investigate the source of the problem, we present, in Fig. 16.11, plots of the
+cross-sections of the restricted-likelihood surface for $\delta_2$, $\delta_3$, $\delta_4$, and $\sigma$ . 
+
+plots while fixing the other parameters at the reported REML estimates. The panel for d4, the
+ratio of the residual SD of the visual acuity measurements at 52 weeks relative to
+week 4, shows an approximately flat horizontal line close to zero. More precisely,
+the line shows that the difference between the log-restricted-likelihood
+
+This indicates that, if we assume model M16.6, the data contain very little information about this particular parameter, because the log-restricted-likelihood function surface is virtually flat in
+the corresponding direction of the parameter space. 
+
+Moreover, the plot for d4, unlike the other plots shown in Fig. 16.11, does not suggest any maximum of the likelihood function within the presented interval of $\delta_4$ values. 
+
+This means that the REML estimate, reported by the `lme()` function in Panel R16.14a, is not an optimum value.
+
+
+Given the close similarity of the structure of models M16.6 and M16.3, a question is: Why were there no apparent problems with fitting of the latter model?
+
+Although the models are similar, they differ with respect to the form of the marginal variance-covariance structure of visual acuity measurements. 
+
+The form of the covariance of the measurements obtained for the subject $i$ at different times, implied by model M16.6, is the same as the one resulting from model M16.3 and is given by (16.14).
+
+However, the variance for a measurement obtained at the time $t$, implied by model M16.6, 
+
+
+$$
+Var(y_{it}) = d_{11} + 2d_{12} TIME_{it} + d_{22}TIME^2_{it} + \sigma^2 \delta^2_t . (16.19)
+$$
+
+
+$$
+\begin{split}
+Cov(y_{it_1}, y_{it_2}) = &
+\begin{pmatrix}
+1 & TIME_{it_1}
+\end{pmatrix} \pmb {\mathcal D} 
+\begin{pmatrix} 
+1 \\ TIME_{it_2}
+\end{pmatrix} + \pmb I(t_1 = t_2)\sigma^2 (TIME_{it_1})^{2\delta} \\
+= \ & d_{11} + d_{12}(TIME_{it_1} + TIME_{it_2}) + d_{22} TIME_{it_1} TIME_{it_2} \\
++ \ &\pmb I(t_1 = t_2 )\sigma^2 (TIME_{it})^{2\delta}, (16.14)\\
+Var(y_{it}) = & d_{11} + 2d_{12} TIME_{it} + d_{22}TIME^2_{it} + \sigma^2(TIME_{it})^{2\delta}. (16.15)
+\end{split}
+$$
+
+Equations (16.14) and (16.19) define the ten unique elements of the marginal variance-covariance matrix $\pmb {\mathcal V}_i$ for model M16.6 as linear functions of seven parameters:
+
+$d_{11}, d_{12}, d_{22}, \sigma, \delta_2, \delta_3, \delta_4$ Given that the number of parameters is close to the number of equations, collinearity among the parameters may result, with consequences in the form of convergence problems of the estimation algorithm.
+
+
+On the other hand, the right-hand side of (16.15) for model M16.3 has fewer parameters and involves a power function of time, which is nonlinear in terms of the parameter $\delta$. Hence, in this case, the collinearity is less likely to appear.
+
+
+Thus, as compared to model M16.6, model M16.3 imposes an additional restriction on the form of the marginal variance-covariance structure. 
+
+The restriction limits the parameter space, in which it is possible to find an optimum solution, because the data become more informative.
+
+
+## 16.6 Testing Hypotheses About Random Effects
+
+formal tests of hypotheses about the variance-covariance structure can be performed using the LR test based on the restricted likelihood function. 
+
+An important issue is the null distribution of the test statistics. 
+
+In particular, when the values of the variance-covariance parameters, compatible with the null hypothesis, lie in the interior of the parameter space, the null distribution is a $\chi^2$ distribution with the number of degrees of freedom equal to the difference in the number of (independent) variance-covariance parameters between the null and alternative models
+
+
+However, when the values of the variance-covariance parameters, compatible with the null hypothesis, lie on the boundary of the parameter space, the exact form of the null distribution is difficult to obtain.
+Note that this result has been obtained by assuming that the residual errors are independent and homoscedastic.
+
+
+In other cases, the only practical alternative is to simulate the null distribution. 
+In R this can be done using the `simulate()` function from the `nlme` package or using
+the function `exactRLRT()` from the package `RLRsim`.
+
+
+It was noted there that both functions only allow for independent, homoscedastic residual errors.
+
+Moreover, the function `exactRLRT()` accommodates only independent random effects, while the function `simulate()` is not defined for model-fit objects of class `gls`.
+
+
+```{r "R16.16 ARMD Trial: The values of Akaike’s Information Criterion for models M16.1–M16.5"}
+AIC(fm16.1, fm16.2, fm16.3, fm16.4)
+
+fm16.4ml <- update(fm16.4, method = "ML")
+fm16.5ml <- update(fm16.5, method = "ML")
+anova(fm16.4ml, fm16.5ml)
+```
+
+### 16.6.1 Test for Random Intercepts
+
+Let us first consider model M16.1 containing random intercept. To test whether
+subject-specific random intercepts are needed, we might use a REML-based LR test
+based on the alternative model M16.1 and a null model that assumes homoscedastic
+residual errors and no random effects.
+
+```{r "R16.17 ARMD Trial: The REML-based likelihood-ratio test for no random intercepts in model M16.1."}
+## (a) Using 0.5chi^2 0 +0.5chi^2 1 as the null distribution
+
+## In Panel R16.17, we conduct the REML-based LRT by 
+## referring the LR-test statistic to a null distribution 
+## obtained using a mixture of c2 distributions or 
+## a simulation technique
+vis.gls1a <- # Null model
+  gls(lm2.form, data = armd)
+(anova.res <- anova(vis.gls1a, fm16.1)) 
+
+(anova.res[["p-value"]][2])/2
+
+
+## (b) Using the function exactRLRT() to simulate the null distribution
+library(RLRsim)
+exactRLRT(fm16.1)
+```
+
+Note that we are testing the null hypothesis that the variance of the random intercept is zero, which is on the boundary of the parameter space. 
+
+Thus, the p-value reported by `anova()` is computed by referring the value of the LR-test statistic to the incorrect $\chi^2_1$ null distribution. 
+
+In this case, the appropriate asymptotic distribution is a 50%–50% mixture of the $\chi^2_0$ and $\chi^2_1$ distributions (Sect. 13.7.2).
+
+
+To obtain the correct p-value, we divided the $\chi^2_1$-based p-value, extracted from the object **anova.res** containing the results of the `anova()`-function call, by 2.
+
+
+Clearly, in the current case, the adjusted p-value indicates that the result of the test is statistically significant. 
+
+
+It allows us to reject the null hypothesis that the variance of the distribution of random intercepts is equal to 0.
+
+
+An alternative, shown in Panel R16.17b, is to use the empirical null distribution of the LR test, obtained with the help of the function `exactRLRT()` from the package `RLRsim`.
+
+Because we test a random effect in model M16.1, which contains only a single random effect, we use the abbreviated form of the function call, with m as the only argument. The p-value of the REML-based LR test,
+estimated from 10,000 simulations (the default), clearly indicates that the result of
+the test is statistically significant. In this case, given the importance of including
+the random intercepts into the model, which are needed to adjust for the correlation
+between visual acuity measurements, there is not much difference with the p-value
+obtained using the asymptotic 50%–50% mixture of the $\chi^2_0$ and $\chi^2_1$ distributions.
+
+
+To simulate the null distribution of the LRT, we could consider applying the `simulate()` function to objects `vis.gls1` (see Panel R6.3) and `fm16.1`. Unfortunately, the necessary `simulate.gls()` method is not developed for model fit objects of class `gls`. 
+
+In the next section, we will illustrate how to use the `simulate()` function to test for the need of random slope.
+
+
+### 16.6.2 Test for Random Slopes 
+
+
+```{r "R16.18 ARMD Trial: The REML-based likelihood-ratio test for random slopes for model M16.7"}
+## (a) Fitting model M16.7
+fm16.7 <- update(fm16.4, weights = NULL, # Constant resid. variance
+                  data = armd)
+
+
+## (b) Using 0.5chi^2 1 +0.5chi^2 2 as the null distribution
+(an.res <- # M16.1 (null)
+     anova(fm16.1, fm16.7)) # M16.7 (alternative)
+(RLRT <- an.res[["L.Ratio"]][2])
+.5 * pchisq(RLRT, 1, lower.tail = FALSE) + # 0.5c2 1+ 0.5c2 2
+ .5 * pchisq(RLRT, 2, lower.tail = FALSE)
+
+## (c) Using the function exactRLRT() to simulate the null distribution
+mAux <- # Auxiliary model with ...
+  update(fm16.1,
+         random = ~ 0 + time | subject, # ... random slopes only.
+         data = armd)
+exactRLRT(
+  m = mAux, # Auxiliary model
+  m0 = fm16.1, # M16.1 (null)
+  mA = fm16.7) # M16.7 (alternative)
+
+
+## (d) Using the function simulate() to simulate the null distribution
+vis.lme2.sim <- # M16.1 (null)
+  simulate(m1 = fm16.1, 
+           m2 = fm16.7, 
+           nsim = 100) # M16.7 (alternative)
+plot(vis.lme2.sim, 
+     df = c(1, 2), # Fig. 16.12
+     abline = c(0, 1, lty = 2))
+```
+
+More specifically, the function `simulate()` is applied to the objects fm16.1 and fm16.7, with the former specified as the null model and the latter indicated, with the help of the argument m2, as the alternative model. 
+
+The number of the simulated test-statistic values is set, with the help of the **nsim** argument, at 10,000.
+
+The required degrees of freedom are passed to the `plot()` function using the argument df in the form of a numeric vector (Sect. 14.7). 
+
+To include in the plot, e.g., a 65–35% mixture, the argument `weights=c(0.65,0.35)` should explicitly be used.
+
+by default, the function simulate.lme() uses both forms of the LR test.
+
+
+## 16.7 Analysis Using the Function lmer()
+
+### 16.7.1 Basic Results
+
+```{r "R16.19 ARMD Trial: Model M16.1 fitted using the function lmer()"}
+## (a) Model fit and results
+require(lme4.0)
+fm16.1mer <- # M16.1
+  lmer(visual ~ visual0  +  time * treat.f  +  (1|subject),
+       data = armd)
+View(fm16.1mer)
+print(fm16.1mer, 
+      corr = TRUE) # Corr(beta) not printed
+
+## (b) Correlation matrix for b
+vcovb <- vcov(fm16.1mer) # Var(beta)
+corb <- cov2cor(vcovb) # Corr(beta)
+nms <- abbreviate(names(fixef(fm16.1mer)), 5)
+rownames(corb) <- nms
+corb
+
+
+methods(class = "merMod")
+```
+
+Note that, given the fact that model M16.1 is a conditional independence LMM with homoscedastic residual errors, $\sigma$ can be interpreted as the residual standard deviation.
+
+```{r}
+## (a) Variance-components estimates
+VarCorr(fm16.1mer) # D, Corr(D), sigma
+str(fm16.1mer)
+(sgma <- resid(fm16.1mer)) %>% sd()# sigma
+methods(class = "merMod")
+
+## (b) The marginal variance-covariance matrix V
+A <- getME(fm16.1mer, "A") # A
+View(A)
+I.n <- Diagonal(ncol(A)) # IN
+V <- sgma^2 * (I.n  +  crossprod(A)) # V = s 2(IN+AA)
+str(getME(fm16.1mer, "flist")) # Grouping factor
+
+V[3:6, 3:6] # Vi not displayed (see R16.4)
+View(V)
+```
+
+```{r "R16.21 ARMD Trial: Calculation of “naive” p-values for the tests for fixed effects for model M16.1. "}
+## (a) P-values for the marginal-approach t-tests
+coefs <- coef(summary(fm16.1mer)) # b, se(b), t-stat
+ddf <- c(631, 231, 631, 231, 631) # Denominator df
+pT <- 2 * (1 - pt(abs(coefs[, "t value"]), ddf)) # p-value
+tTable <- cbind(coefs, ddf, pT)
+printCoefmat(tTable, P.values = TRUE, has.Pvalue = TRUE)
+
+## (b) P-values for the sequential-approach F-tests
+(dtaov <- anova(fm16.1mer))
+
+ddf1 <- ddf[-1] # ddf for intercept omitted
+within(dtaov,
+{
+`Pr(>F)` <- pf(`F value`, Df, ddf1, lower.tail = FALSE)
+denDf <- ddf1
+})
+
+```
+
+
+
+```{r "R16.22 ARMD Trial: Simulations of the dependent variable based on the fitted form of model M16.1 using the simulate.mer() method. The model-fit object fm16.1mer was created in Panel R16.19"}
+## (a) Refitting the model to the simulated data
+merObject <- fm16.1mer # M16.1 fit
+simD1 <- simulate(merObject, nsim = 1000) # Simulated y from M16.1
+SimD1summ <- apply(simD1,
+2, # Over columns
+function(y){
+auxFit <- refit(merObject, y) # Refit M16.1 with new y
+summ <- summary(auxFit) # Summary
+beta <- fixef(summ) # b
+Sx <- getME(auxFit, "theta") # S element
+sgma <- sigma(auxFit) # s
+list(beta = beta, ST = Sx, sigma = sgma)
+})
+## (b) Matrices/vectors with estimates of b, d11/s 2, and s for all simulations
+betaE <- # Matrix with b
+sapply(SimD1summ, FUN = function(x) x$beta)
+STe <- sapply(SimD1summ, FUN = function(x) x$ST)
+sigmaE <- sapply(SimD1summ, FUN = function(x) x$sigma)
+```
+
+
+```{r "R16.23 ARMD Trial: Simulation-based summary statistics of the distribution of thefixed effects and variance components for model M16.1. "}
+(a) Empirical means, quantiles, and p-values for fixed-effects coefficients
+betaEm <- apply(betaE, 1, mean) # Means (for each row)
+betaEq <- # Quantiles
+apply(betaE, 1, +
+FUN = function(x) quantile(x, c(0.5, 0.025, 0.975)))
+ptE <- # p-values
+apply(betaE, 1,
+FUN = function(x){
+prb <- mean(x 0)
+2 * pmax(0.5/ncol(betaE), pmin(prb, 1 - prb))
+})
+cbind(betaEm, t(betaEq), ptE)
+
+## (b) Empirical means and quantiles for √d11 and s
+d11E <- STe * sigmaE # d11=(d11/s 2)1/2s
+rndE <- rbind(d11E, sigmaE) # Matrix with two rows
+rndEm <- rowMeans(rndE) # Means (for each row)
+rndEq <- apply(rndE, 1, # Quantiles
+FUN = function(x) quantile(x, c(0.5, 0.025, 0.975)))
+cbind(rndEm, t(rndEq)) # Bind result
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

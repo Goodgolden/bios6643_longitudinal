@@ -1,0 +1,77 @@
+---
+title: "lmmur_07"
+author: "Randy"
+date: "9/8/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Chapter 7 Linear Models with Heterogeneous Variance
+
+In the presentation of the LMs with heterogeneous variance, 
+we introduce important concepts of variance function:
+
+- WLS estimation
+- GLS estimation
+- IRLS estimation
+
+## 7.2 Model Specification
+
+We now relax the constant variance assumption and assume that
+$Var(y_i) = \sigma^2_i  \ \ \ \ (7.1)$
+
+- It is important to note that the model contains in total $n + p$ parameters, including $n$ parameters $\sigma^2_i$ and $p$ parameters $\beta$. 
+
+$$
+y_i = x^{(1)}_i \beta_1 + ··· + x^{(p)}_i \beta_p + \epsilon_i \equiv x'_i\beta + \epsilon_i \ \ \ \ (7.2)
+$$
+
+$$
+\epsilon_i \sim \mathcal N (0,\ \sigma^2_i) \ \ \ \ (7.3)
+$$
+
+- This is more than $n$, the number of observations. Therefore, the model is not identifiable.
+
+- if we impose additional constraints on residual variance, the model will be identifiable.
+
+## 7.2.1 Known Variance Weights
+
+- assume that the variance of $epsilon_i$ is equal to a known proportion of one (unknown) parameter $\sigma^2$. 
+- More specifically, we may associate with every observation $i$ a known constant $w_i > 0$ and assume that $Var(\epsilon_i) = Var(y_i) = \sigma^2/w_i$.
+
+$$
+\epsilon_i \sim \mathcal N (0,\ \sigma^2/w_i) \ \ \ \ (7.5)
+$$
+
+- Constants $w_i$ are called “true” weights. The higher the weight for a given observation, the lower the variance, i.e., the more precisely recorded the value of $y_i$.
+
+
+## 7.2.2 Variance Function
+
+$$
+\lambda (\pmb \delta,\ \mu,\ \pmb v)
+$$
+
+which assumes positive values and is continuous and differentiable with respect to $\delta$ for all legitimate values of $\delta$. Note that $\mu$ is a scalar and $\pmb \delta$ and $\pmb v$ can be vectors.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

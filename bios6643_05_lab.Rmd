@@ -1,0 +1,107 @@
+---
+title: "Lab L05 Full rank, Estimability and Contrasts"
+author: "EJC"
+subtitle: "BIOS6643"
+institute: Department of Biostatistics & Informatics, CU Anschutz
+output:
+  beamer_presentation:
+    template: template_00.tex
+    theme: Goettingen
+    colortheme: rose  
+    slide_level: 2
+    toc: true
+    keep_tex: true
+    latex_engine: xelatex
+    dev: cairo_pdf
+    fig_caption: no
+    fig_crop: no
+fontsize: 9pt
+make149: yes
+header-includes:
+- \AtBeginSubsection{}
+- \AtBeginSection{}
+---
+\newcommand{\textcm}{\textcolor{magenta}}
+
+```{r setup, include=FALSE, cache=F, message=F, warning=F, results="hide"}
+## setup directory
+# setwd()
+##install.packages("nlme")
+##install.packages("multcomp")
+
+knitr::opts_chunk$set(cache = TRUE, echo = FALSE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(fig.height = 4, fig.width = 5, out.width = '50%', fig.align='center')
+knitr::opts_chunk$set(fig.path = 'figs_L5/', cache.path = 'cache/')
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(nlme)
+
+```
+
+
+##
+### Example 5: Prospective randomized trial
+
+STEPPED-CARE randomized trial. The dataset we will use the class resembles the trial.
+
+- A behavioral intervention was tested versus usual care in 286 patients with lung or head and neck cancer.  
+- Population: low income patients in the Denver area across 5 hospitals
+- Primary outcomes: anxiety, depression and coping skills scores
+- Outcomes were measured at baseline, and at 6, 12 and 24 weeks
+
+
+```{r "read stepped-care", eval=T, echo=TRUE, include=TRUE}
+# Read in data 
+dat.step <- read.csv("/Users/juarezce/Documents/OneDrive - The University of Colorado Denver/BIOS6643/BIOS6643_Notes/data/stepped-care-class.csv", header=TRUE)
+
+head(dat.step, 3)
+```
+
+```{r fig.height=6, fig.width=6, message=FALSE, warning=FALSE, out.width="50%", eval=T, echo=TRUE, include=TRUE}
+
+plot_cop <- dat.step %>%
+  ggplot(aes(x = time, y = cops, group = id)) +
+  geom_line(aes(color = treat), alpha = 0.2) +
+  geom_smooth(aes(group = treat, color = treat), method = "lm") +
+  # facet_wrap(~randomize) +
+  theme_classic() +
+  theme(legend.position = "none") +
+  ylab("Copping Skill")
+
+```
+
+```{r "model with time as linear", eval=T, echo=TRUE, include=TRUE}
+
+dat.step$time <- as.factor(dat.step$time)
+## means model
+fit2 <- lme(cops ~  time + treat:time-1,
+            random= ~ 1 | id, data = dat.step)
+summary(fit2) 
+
+## estimate the means in the control and intervention arm at 6 weeks
+coef2 <- summary(fit2)$coef$fixed
+cov2 <- summary(fit2)$varFix
+
+
+```
+
+## Tests for interaction in the Stepped Care data
+
+## 
+1. Write a model that includes intervention arm and time as class variables, plus intervention $\times$ time interaction.
+
+2. Provide estimates of means at 6 months for the control and intervention arms.
+
+3. Provide a test for the mean difference at 6 months between the control and intervention arms.
+
+4. Write a test to compare is if trends over time differ between intervention/treatment arms.
+
+5. Write a test to compare changes from beginning to end among the 2 treatment arms.
+
+
+
+## 
+
+
+

@@ -1,0 +1,104 @@
+---
+title: "BIOS6643. L8 Covariance Structures $R_i$"
+cheauthor: "EJC"
+-- date: "" 
+header-includes:
+   - \usepackage{amsmath}
+   - \usepackage{float}
+output: pdf_document
+---
+
+\newcommand{\bi}{\begin{itemize}}
+\newcommand{\ei}{\end{itemize}}
+\newcommand{\itt}{\item}
+
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- -->
+
+
+```{r installp, echo = FALSE, eval=T, include=F}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(nlme)
+## library(SASmarkdown)
+
+```
+
+```{r include=FALSE}
+# set up the options so that knit knows where you SAS executable is
+# set the line size to be easily readable on letter size paper, portrait
+# and set the knitr options using opts_chunk$set().
+sasopts <- "-nosplash -linesize 75"
+saspath <- "C:/Program Files/SASHome/SASFoundation/9.4/sas.exe"
+## those two parts should have been universal 
+## just copy and paste into your Rmarkdown files
+knitr::opts_chunk$set(engine = "sas", 
+                      engine.path = saspath, 
+                      engine.opts = sasopts, 
+                      comment = NA)
+
+```
+
+
+
+
+```{r engine="sas", engine.path="C:/Program Files/SASHome/SASFoundation/9.4/sas.exe", engine.opts="-nosplash -linesize 75", collectcode=TRUE}
+
+
+proc import DATAFILE='C:\Users\juarezce\OneDrive - The University of Colorado Denver\BIOS6643\BIOS6643_Notes\data\dental.csv'
+  replace out=dental dbms=csv; run;
+
+ proc print data=dental(obs=2);run;
+
+  
+  title "1. COMMON UNSTRUCTURED";
+proc mixed data=dental method=ml;
+  class gender id;
+  model distance = gender gender*age / noint solution ;
+  repeated / type = un subject = id r rcorr;
+run;
+
+title "2. COMMON COMPOUND SYMMETRY STRUCTURE";
+proc mixed data=dental method=ml;
+  class gender id;
+  model distance = gender gender*age / noint solution ;
+  repeated / type = cs subject = id r rcorr;
+run;
+
+  title "3. SEPARATE COMPOUND SYMMETRY BY GENDER";
+proc mixed  data=dental method=ml;
+  class gender id ;
+  model distance = gender age*gender / noint solution chisq;
+  repeated / type = cs subject=id r=1,4 rcorr=1,4 group=gender;
+run;
+
+  
+title "4. COMMON AR(1) STRUCTURE";
+proc mixed data=dental method=ml;
+  class gender id ;
+  model distance = gender age*gender / noint solution chisq;
+  repeated / type = ar(1)  subject=id r rcorr;
+run;
+
+  title "5. COMMON ONE-DEPENDENT STRUCTURE";
+proc mixed  data=dental method=ml;
+  class gender id ;
+  model distance = gender age*gender / noint solution chisq;
+  repeated / type = toep(2)  subject=id r rcorr;
+run;
+
+title "6. SPATIAL EXPONENTIAL POWER";
+proc mixed data=dental method=ml;
+  class gender id;
+  model distance = gender gender*age / noint solution chisq;
+  repeated / type = sp(exp)(age) subject = id r rcorr;
+run;
+  
+  /* */
+  
+```

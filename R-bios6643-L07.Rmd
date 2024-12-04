@@ -1,0 +1,121 @@
+---
+title: "BIOS6643. L07:  Random effects"
+cheauthor: "EJC"
+-- date: "" 
+header-includes:
+   - \usepackage{amsmath}
+   - \usepackage{float}
+output: pdf_document
+---
+
+\newcommand{\bi}{\begin{itemize}}
+\newcommand{\ei}{\end{itemize}}
+\newcommand{\itt}{\item}
+
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- supplement of L05. Only R notes are included here -->
+
+
+# Notes
+
+```{r installp, echo = FALSE, eval=T, include=T}
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(nlme)
+library(lme4)
+
+```
+
+
+##
+### Example 5: Prospective randomized trial
+
+STEPPED-CARE randomized trial. The dataset we will use the class resembles the trial.
+
+- A behavioral intervention was tested versus usual care in 286 patients with lung or head and neck cancer.  
+- Population: low income patients in the Denver area across 5 hospitals
+- Primary outcomes: anxiety, depression and coping skills scores
+- Outcomes were measured at baseline, and at 6, 12 and 24 weeks
+
+
+```{r "read stepped-care", eval=T, echo=TRUE, include=TRUE}
+# Read in data 
+dat.step <- read.csv("/Users/juarezce/Documents/OneDrive - The University of Colorado Denver/BIOS6643/BIOS6643_Notes/data/stepped-care-class.csv", header=TRUE)
+
+head(dat.step, 3)
+```
+
+
+```{r test, eval=T, echo = F, fig.height=3.7, include=TRUE}
+  ggplot(dat.step, aes(x = time, y = cops, group = id)) +
+  # facet_wrap(~treat) +
+  geom_line(aes(color = treat), alpha = 0.2) +
+  theme_classic() +
+  theme(legend.position = "top") +
+  ylab("Copping Skill")
+
+```
+
+# Using nlme package to fit models with the Stepped Care data
+
+## 
+
+
+```{r lme.models, eval=T, echo = T, include=TRUE}
+## parameterization 1
+dat.step$time <- as.factor(dat.step$time)
+
+step.lme <- lme(cops ~  time + treat:time-1,
+            random= ~ 1 | id, data = dat.step)
+summary(step.lme) 
+
+beta <- fixed.effects(step.lme)  #  may use fixef(step.lme)
+b <- random.effects(step.lme)    #  random effects; may use ranef(step.lme)
+head(b,3)
+se.beta <- sqrt(diag(step.lme$varFix)) 
+## Recall step.lme$varFix provides the var-cov of the fixed coefficients of model (beta)
+cov <- step.lme$varFix
+
+G <- getVarCov(step.lme, type="random.effects")   #  G matrix 
+sigma2 <- step.lme$sigma^2  # sigma^2
+R <- getVarCov(step.lme, type="conditional", individual=1)   # R_i
+V <- getVarCov(step.lme, type="marginal", individual=1)   # V_i
+
+
+```
+
+# Using lme4 package to fit models with the Stepped Care data
+
+## 
+- **lme4** is more computationally efficient than **nlme** 
+- **lme4** does not currently implement **nlme**’s features for modeling heteroscedasticity and cor-
+relation of residuals.
+- **lme4** includes generalized linear mixed model (GLMM) capabilities, via the **glmer** function.
+
+```{r lmer.models, eval=T, echo = T, include=TRUE}
+## parameterization 1
+library(lme4) ## lme4 seems to be more computationally efficient than nlme
+step.lmer <- lmer(cops ~ -1 + time + treat:time-1 + (1| id),
+                      REML=FALSE,data=dat.step)
+summary(step.lmer)
+
+beta.lmer <- fixef(step.lmer) 
+cov.lmer <- vcov(step.lmer) ## var-cov matrix of fixed coeff 
+
+b.lmer <- ranef(step.lmer) ## random effects 
+sigma2.lmer <- sigma(step.lmer)^2
+
+vc <- VarCorr(step.lmer)
+
+print(vc, comp="Variance")
+
+
+```
+
+```
+

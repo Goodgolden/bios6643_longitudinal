@@ -1,0 +1,295 @@
+---
+title: "BIOS6643. L10 Semiparametric regression"
+cheauthor: "EJC"
+-- date: "" 
+header-includes:
+   - \usepackage{amsmath}
+   - \usepackage{float}
+output: pdf_document
+---
+
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- -->
+
+
+```{r installp, echo = FALSE, eval=T, include=F}
+##library(dplyr)
+library(tidyverse)
+library(ggplot2)
+
+library(lme4)
+library(ISLR) ##
+library(splines)
+
+```
+
+# Modeling non-linearity in crossectional data
+## Example using the Wage data (James, Witten (2013 Ch 7)) - polynomial regression
+
+```{r eval=T, echo = T, include=TRUE}
+#  load data
+head(Wage,3)
+
+## fitting a polynomial regression of degree 4, using orthogonal polynomials 
+fit <- lm(wage ~ poly(age,4), data=Wage)
+coef(summary(fit))
+
+## fitting a polynomial regression of degree 4, using powers of age directly
+fit2 <- lm(wage ~ poly(age,4, raw=TRUE), data=Wage) ## raw=TRUE
+coef(summary(fit2))
+
+## using coefficients of age^X 
+fit2a <- lm(wage ~ age + I(age^2) + I(age^3) + I(age^4), data=Wage) 
+coef(summary(fit2a))
+
+## predict the outcome at a grid of values age
+agelims <- range(Wage$age)
+agelims
+age.grid <- seq(from=agelims[1],to=agelims[2])
+preds <- predict(fit, newdata=list(age=age.grid), se=TRUE)
+se.bands <- cbind(preds$fit+2*preds$se.fit, preds$fit-2*preds$se.fit)
+
+par(mfrow=c(1,2),mar=c(4.5,4.5,1,1),oma=c(0,0,4,0)) 
+plot(Wage$age, Wage$wage, xlim=agelims, cex=.5, col="darkgrey")
+title("Degree-4 Polynomial",outer=T)
+lines(age.grid, preds$fit, lwd=2,col="blue")
+matlines(age.grid, se.bands, lwd=1,col="blue",lty=3)
+
+## predictions are the same (no meaningful differences) regardless of which basis is used
+preds2 <- predict(fit2, newdata=list(age=age.grid), se=TRUE)
+max(abs(preds$fit-preds2$fit))
+  
+table(cut(Wage$age,4))
+fit3 <- lm(wage ~cut(age,4),data=Wage)
+coef(summary(fit3))
+preds3 <- predict(fit3, newdata=list(age=age.grid), se=TRUE)
+se.bands3 <- cbind(preds3$fit+2*preds3$se.fit, preds3$fit-2*preds3$se.fit)
+
+par(mfrow=c(1,2),mar=c(4.5,4.5,1,1),oma=c(0,0,4,0)) 
+plot(Wage$age, Wage$wage, xlim=agelims, cex=.5, col="darkgrey")
+title("Degree-4 Polynomial",outer=T)
+lines(age.grid, preds3$fit, lwd=2,col="blue")
+matlines(age.grid, se.bands3, lwd=1,col="blue",lty=3)
+
+
+```
+
+## Wage data - regression splines
+We need the library **splines**. The **bs()** function generates the entire matrix of basis functions for splines with the specified set of knots.
+
+```{r eval=T, echo = T, include=TRUE}
+
+bst <- bs(age.grid, knots=c(25,40,60),  ## cubic with degree: 3 (knots)+4=7 (including intercept)
+	degree=3)
+
+## plotting some basis
+plot.ind <- TRUE
+if (plot.ind==TRUE) { 
+par(mfrow=c(1,1))
+plot(age.grid, bst[,1],type='l')
+lines(age.grid, bst[,2],col=2)
+lines(age.grid, bst[,3],col=3)
+lines(age.grid, bst[,4],col=4)
+lines(age.grid, bst[,5],col=5)
+lines(age.grid, bst[,6],col=6)
+}
+
+## number of basis
+dim(bs(Wage$age,knots=c(25,40,60)))
+## it's possible to specify the degrees of freedom, in which case knots are placed at uniform quantiles of data
+dim(bs(Wage$age,df=6))
+attr(bs(Wage$age,df=6),"knots")  
+## bs also has a "degree" option which corresponds to the degree of the polynomial
+
+
+fit4 <- lm(wage ~ bs(age, knots=c(25,40,60)),
+          data=Wage)
+pred4 <- predict(fit4,
+                newdata=list(age=age.grid), se=T)
+plot(Wage$age, Wage$wage,col="gray")
+lines(age.grid, pred4$fit,lwd=2, col='blue')
+lines(age.grid, pred4$fit+2*pred4$se,lty="dashed")
+lines(age.grid, pred4$fit-2*pred4$se,lty="dashed")
+
+
+fit5 <- lm(wage ~ ns(age, df=4),data=Wage)
+pred5 <- predict(fit5, newdata=list(age=age.grid), se=T)
+lines(age.grid, pred5$fit,col="red",lwd=2)
+legend('topright', lty=c(1,1), col=c("blue", "red"), 
+       c("Cubic Spline", "Natural Cubic Spline"))
+
+```
+
+
+## Wage data - smoothing splines
+
+```{r eval=T, echo = T, include=TRUE}
+
+plot(Wage$age, Wage$wage,xlim=agelims,
+     cex=.5, col="darkgrey")
+title("Smoothing Spline")
+fit6 <- smooth.spline(Wage$age, Wage$wage, df=16)
+fit6b <- smooth.spline(Wage$age, Wage$wage,cv=TRUE)
+fit6$df
+lines(fit6,col="red",lwd=2)
+lines(fit6b,col="blue",lwd=2)
+legend("topright",legend=c("16 DF","6.8 DF"),
+col=c("red","blue"),lty=1,lwd=2,cex=.8)
+
+```
+
+## Wage data - local polynomial regression
+We need the function **loess()**. 
+
+```{r eval=T, echo = T, include=TRUE}
+
+plot(Wage$age,Wage$wage,ylim=c(20,200),cex=.5,col="darkgrey")
+title("Local Regression")
+fit7 <- loess(wage ~age, span=.2, data=Wage)
+fit7b <- loess(wage ~age, span=.5, data=Wage)
+lines(age.grid,predict(fit7, data.frame(age=age.grid)), col="red",lwd=2)
+lines(age.grid,predict(fit7b, data.frame(age=age.grid)), col="blue",lwd=2)
+legend("topright",legend=c("Span=0.2","Span=0.5"), col=c("red","blue"),lty=1,lwd=2,cex=.8)
+
+```
+
+# Modeling non-linearity in longitudinal data
+
+## Colorado CF FEV data
+The data set gives characteristics of children patients with a diagnosis of Cystic Fibrosis (CF) who are patients at the Colorado Children’s Hospital. Data pull was conducted in Summer 2020. This dataset may only be used for BIOS6643. 
+
+VARIABLE DESCRIPTIONS:  
+id: patient ID	
+race: race	
+age: Age in years	
+gender	: gender
+fev: \% of predicted forced expiratory volume in 1 second
+
+## Local polynomial regression
+
+```{r eval=T, echo = T, include=TRUE}
+#  Read in the data 
+
+##  Read in the data 
+dat <- read.csv("/Users/juarezce/Documents/OneDrive - The University of Colorado Denver/BIOS6643/BIOS6643_Notes/data/fev.csv",
+                header=TRUE)
+length(unique(dat$id)) ## number of individuals
+head(dat,3)
+summary(dat$age) ## age in years
+summary(dat$fev)
+
+## getting the age grid for fev
+agelimsf <- range(dat$age)
+agelimsf
+age.gridf <- seq(from=agelimsf[1],to=agelimsf[2])
+
+plot(dat$age, dat$fev, ylim=c(20,150), cex=.5, col="darkgrey")
+title("Local Regression")
+fitf.0a <- loess(fev ~age, span=.1, data=dat)
+fitf.0b <- loess(fev ~age, span=.6, data=dat)
+lines(age.gridf, predict(fitf.0a, data.frame(age=age.gridf), family="gaussian"),
+      col="red",lwd=2)
+lines(age.gridf, predict(fitf.0b, data.frame(age=age.gridf), family="gaussian"), 
+      col="blue",lwd=2)
+legend("topright",legend=c("Span=0.1","Span=0.6"), col=c("red","blue"),lty=1,lwd=2,cex=.8)
+
+```
+
+## Polynomial regression 
+
+```{r eval=T, echo = T, include=TRUE}
+
+fit.lmm.1 <- lmer(fev ~ poly(age, 7) + ( 1 | id), data=dat)
+coef(summary(fit.lmm.1))
+
+fit.lmm.1b <- lmer(fev ~ poly(age, 7, raw=TRUE) + ( 1 | id), data=dat)
+coef(summary(fit.lmm.1b))
+
+pred.1 <- predict(fit.lmm.1,
+                  newdata= data.frame(age=age.gridf, poly(age.gridf, 7)),
+                  type='response', re.form=~0)
+
+par(mfrow=c(1,1),mar=c(4.5,4.5,1,1),oma=c(0,0,4,0)) 
+plot(dat$age, dat$fev, xlim=agelimsf, cex=.5, col="darkgrey",
+     xlab='Age', ylab='Fev1')
+title("Degree-7 Polynomial",outer=T)
+lines(age.gridf, pred.1, lwd=2,col="blue")
+
+```
+
+## Spline regression 
+
+```{r eval=T, echo = T, include=TRUE}
+
+fit.lmm.2 <- lmer(fev ~ bs(age, knots=c(10,15)) + ( 1 | id), data=dat)
+coef(summary(fit.lmm.2))
+
+fit.lmm.2b <- lmer(fev ~ ns(age, knots=c(10,15)) + ( 1 | id), data=dat)
+coef(summary(fit.lmm.2b))
+
+pred.2 <- predict(fit.lmm.2,
+                  newdata= data.frame(age=age.gridf, bs(age.gridf, knots=c(10,15))),
+                  type='response', re.form=~0)
+pred.2b <- predict(fit.lmm.2,
+                  newdata= data.frame(age=age.gridf, ns(age.gridf, knots=c(10,15))),
+                  type='response', re.form=~0)
+
+par(mfrow=c(1,1),mar=c(4.5,4.5,1,1),oma=c(0,0,4,0)) 
+plot(dat$age, dat$fev, xlim=agelimsf, cex=.5, col="darkgrey",
+     xlab='Age', ylab='Fev1')
+title("Cubic spline",outer=T)
+lines(age.gridf, pred.2,col="blue",lwd=2)
+lines(age.gridf, pred.2b,col="red",lwd=2)
+legend('topright', lty=c(1,1), col=c("blue", "red"), 
+       c("Cubic Spline", "Natural Cubic Spline"))
+
+
+```
+
+
+## Piecewise linear mean form/structure  
+Fitting piecewise linear model with a knot at 12 (or 14 years). The model is parameterized as 
+
+$E(y_{ij})=\beta_0 + \beta_1 age_{ij} + \beta_2 (age_{ij} -12) I(age_{ij}>12)$
+
+For age < 12: $E(y_{ij})=\beta_0 + \beta_1 age_{ij}$
+
+For age $\geq$ 12: $E(y_{ij})=\beta_0 + \beta_1 age_{ij} + \beta_2 (age_{ij} -12) = (\beta_0 -12) + (\beta_1+\beta_2 ) age_{ij}$
+
+
+```{r eval=T, echo = T, fig.height=3.7, include=T}
+
+dat <- dat %>%
+  mutate(age.12 = as.numeric(if_else(age > 12, age - 12 , 0)),
+         age.14 = as.numeric(if_else(age > 14, age - 14 , 0)))
+head(dat,3)
+
+fit.lmm.3 <- lmer(fev ~ age + age.12 + ( 1 | id), data=dat)
+summary(fit.lmm.3)
+
+fit.lmm.3b <- lmer(fev ~ age + age.14 + ( 1 | id), data=dat)
+summary(fit.lmm.3b)
+
+pred.3 <- predict(fit.lmm.3, newdata=data.frame(age=age.gridf,
+                                                age.12 = ifelse(age.gridf>12, age.gridf-12, 0)),
+                  re.form=~0)
+pred.3b <- predict(fit.lmm.3b, newdata=data.frame(age=age.gridf,
+                                                  age.14 = ifelse(age.gridf>14, age.gridf-14, 0)),
+                   re.form=~0)
+par(mfrow=c(1,1),mar=c(4.5,4.5,1,1),oma=c(0,0,4,0)) 
+plot(dat$age, dat$fev, xlim=agelimsf, cex=.5, col="darkgrey",
+     xlab='Age', ylab='Fev1')
+title("Piecewise linear",outer=T)
+lines(age.gridf, pred.3,col="blue",lwd=2)
+lines(age.gridf, pred.3b,col="red",lwd=2)
+legend('topright', lty=c(1,1), col=c("blue", "red"), 
+       c("PW Linear with Cutpoint at 12 years", "PW Linear with Cutpoint at 14 years"))
+
+
+```
+
+
