@@ -10,3 +10,5 @@ cache/
 .tex
 .log
 /cache/
+.DS_Store
+.out
